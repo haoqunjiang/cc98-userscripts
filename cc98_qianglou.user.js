@@ -218,16 +218,6 @@ $(function() {
         }
     }
 
-    function path (url) {
-        var url = url.toLowerCase();
-
-        if (url === "http://www.cc98.org") {
-            url = "http://www.cc98.org/"
-        }
-
-        return "/" + url.split("/")[3].split("?")[0];  // paths such as "list.asp"
-    };
-
     view();
     qianglou();
 })
