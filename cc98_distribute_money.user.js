@@ -1,7 +1,7 @@
 // ==UserScript==
-// @id             distributeMoney
-// @name           distributeMoney
-// @version        0.1
+// @id             cc98_distribute_money
+// @name           cc98 distribute money
+// @version        0.2
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    inspired by Li Zhao's distribute_money.user.js

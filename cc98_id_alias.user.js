@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_id_alias
 // @name           cc98 id alias
-// @version        1.0
+// @version        0.1
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    给98增加类新浪微博的ID备注功能

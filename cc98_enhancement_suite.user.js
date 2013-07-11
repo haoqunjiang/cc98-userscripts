@@ -1,5 +1,5 @@
 // ==UserScript==
-// @id             cc98 enhancement suite
+// @id             cc98_enhancement_suite
 // @name           cc98 enhancement suite
 // @version        0.1.0
 // @namespace      soda@cc98.org
