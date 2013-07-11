@@ -12,4 +12,4 @@ userscripts链接
 
 - [cc98 id alias](https://userscripts.org/scripts/show/172855) 备注管理
 - [cc98 distribute money](https://userscripts.org/scripts/show/170866) 发米机
-
+- [cc98 qianglou](https://userscripts.org/scripts/show/173069) 抢楼
