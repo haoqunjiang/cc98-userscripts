@@ -5,10 +5,10 @@ cc98scripts
 
 运行环境
 
-- Chrome 预装[TamperMonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
-- Firefox 预装[GreaseMonkey](https://addons.mozilla.org/firefox/addon/greasemonkey)或[Scriptish](https://addons.mozilla.org/firefox/addon/scriptish)
+- Chrome 预装 [TamperMonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)
+- Firefox 预装 [GreaseMonkey](https://addons.mozilla.org/firefox/addon/greasemonkey) 或 [Scriptish](https://addons.mozilla.org/firefox/addon/scriptish)
 
-userscripts链接
+userscripts 链接
 
 - [cc98 id alias](https://userscripts.org/scripts/show/172855) 备注管理
 - [cc98 distribute money](https://userscripts.org/scripts/show/170866) 发米机
