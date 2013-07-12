@@ -89,14 +89,6 @@ $(function() {
         })
     }
 
-    // monitor the current post num
-    function monitor (html, target, callback) {
-        var re = /<span id="topicPagesNavigation">本主题贴数 <b>(\d+)<\/b>/g;
-        var num = parseInt((html.match(re))[0].replace(re, "$1"));
-        if (num === target - 1) {
-            callback();
-        }
-    }
 
     // UI
     function view () {
@@ -158,43 +150,15 @@ $(function() {
         setItem("qianglou-target", target);
         setItem("qianglou-interval", parseFloat(interval) * 1000);
 
+        // clear the textarea
+        $("#content").val("");
+
         // stop the previous routine and start again
         var intervalID = parseInt(getItem("qianglou-intervalid"));
         if (intervalID) {
             clearInterval(intervalID);
         }
         qianglou();
-    }
-
-    function clear () {
-        alert("完成抢楼！");
-
-        var intervalID = parseInt(getItem("qianglou-intervalid"));
-        clearInterval(intervalID);
-
-        removeItem("qianglou");
-
-        removeItem("qianglou-url");
-        removeItem("qianglou-content");
-        removeItem("qianglou-expression");
-        removeItem("qianglou-subject");
-
-        removeItem("qianglou-target");
-        removeItem("qianglou-interval");
-
-        removeItem("qianglou-intervalid");
-
-        showMsg("");
-    }
-
-    // post and then clear up the sessionStorage and the messages
-    function end () {
-        var url = getItem("qianglou-url");
-        var content = getItem("qianglou-content");
-        var expression = getItem("qianglou-expression");
-        var subject = getItem("qianglou-subject");
-        console.log('here')
-        post (url, content, expression, subject, clear);
     }
 
     // starts
@@ -216,6 +180,47 @@ $(function() {
             showMsg("目标楼层：" + getItem("qianglou-target") + "；刷新间隔：" +
                 parseInt(getItem("qianglou-interval")) / 1000 + "s；正在抢楼……");
         }
+    }
+
+    // monitor the current post num
+    function monitor (html, target, callback) {
+        var re = /<span id="topicPagesNavigation">本主题贴数 <b>(\d+)<\/b>/g;
+        var num = parseInt((html.match(re))[0].replace(re, "$1"));
+        if (num === target - 1) {
+            callback();
+        }
+    }
+
+    // post and then clear up the sessionStorage and the messages
+    function end () {
+        var url = getItem("qianglou-url");
+        var content = getItem("qianglou-content");
+        var expression = getItem("qianglou-expression");
+        var subject = getItem("qianglou-subject");
+        console.log('here')
+        post (url, content, expression, subject, clear);
+    }
+
+    function clear () {
+        alert("完成抢楼！");
+
+        var intervalID = parseInt(getItem("qianglou-intervalid"));
+        clearInterval(intervalID);
+
+        removeItem("qianglou");
+
+        removeItem("qianglou-url");
+        removeItem("qianglou-content");
+        removeItem("qianglou-expression");
+        removeItem("qianglou-subject");
+
+        removeItem("qianglou-target");
+        removeItem("qianglou-interval");
+
+        removeItem("qianglou-intervalid");
+
+        showMsg("");
+
     }
 
     view();
