@@ -115,6 +115,7 @@ $(function() {
                     if (qs(window.location.href)["boardid"] === "182" && curAlias === "") {    // 心灵，新增备注
 
                         var newRecord = {};
+                        var recordExist = false;
 
                         var theLink = window.location.href.split("#")[0] + "#" + (index+1) % 10;
                         var today = new Date();
@@ -123,7 +124,16 @@ $(function() {
                         newRecord["link"] = theLink;
                         newRecord["id"] = id;
                         newRecord["expiryDate"] = tommorow;
-                        savedRecords.push(newRecord);
+                        for (var i = savedRecords.length - 1; i >= 0; i--) {
+                            if (savedRecords[i]["link"] === theLink) {
+                                savedRecords[i] = newRecord;
+                                recordExist = true;
+                                break;
+                            }
+                        };
+                        if (!recordExist) {
+                            savedRecords.push(newRecord);
+                        }
 
                         localStorage.setItem("savedRecords", JSON.stringify(savedRecords));
                         localStorage.setItem(id, newAlias);
@@ -187,6 +197,8 @@ $(function() {
 
             savedRecords[i]["id"] = newId;
             savedRecords[i]["expiryDate"] = tommorow;
+            console.log(savedRecords[i]['link'])
+            console.log(JSON.stringify(savedRecords))
 
             localStorage.setItem("savedRecords", JSON.stringify(savedRecords));
             localStorage.setItem(newId, localStorage.getItem(oldId));
@@ -200,13 +212,11 @@ $(function() {
         for (var i = 0; i !== savedRecords.length; ++i) {
             if (today.getTime() > (new Date(savedRecords[i]["expiryDate"]))) {
                 var storey = parseInt(savedRecords[i]["link"].split('#')[1]);
-                var callback = updateGenerator(i, storey)
                 $.ajax({
                     type: "GET",
                     url: savedRecords[i]["link"],
                     dataType: "text",
-                    success: callback,
-                    async: true
+                    success: updateGenerator(i, storey)
                 });
             }
         }
