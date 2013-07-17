@@ -80,9 +80,14 @@
         statBtn.href = "javascript: void(0)";
         var text = document.createTextNode("贴数统计");
         statBtn.appendChild(text);
+        var progressMsg = document.createElement("span");
+        progressMsg.id = "stat-progress";
+        progressMsg.style.color = "red";
 
         var tmp = xpath("//td/a[contains(@href, 'vote')]")[0].parentNode;
         tmp.appendChild(statBtn);
+        tmp.appendChild(document.createElement("br"));
+        tmp.appendChild(progressMsg);
 
         addStyles("\n\
             #do-stat {\n\
@@ -114,10 +119,12 @@
                 url: "http://www.cc98.org/dispbbs.asp?boardid=" + urlParams["boardid"] + "&id=" + urlParams["id"] + "&star=" + i,
                 success: function(text) {
                     parsePage(text);
+                    $("stat-progress").innerHTML = "正在统计第" + i + "页……";
                 },
-                async: (i >= totalPage - 10) ? false : true
+                async: (i >= totalPage - 10 || i % 6 === 0) ? false : true
             });
         }
+        $("stat-progress").innerHTML = "";
         showStat();
     }
 
@@ -175,7 +182,7 @@
                 opacity: 0.9;\n\
                 background-color: #F7F9FB;\n\
                 border-radius: 3px;\n\
-                z-index: 200;\n\
+                z-index: 9999;\n\
                 text-align: left;\n\
             }\n\
         ');
