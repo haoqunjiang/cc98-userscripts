@@ -175,6 +175,7 @@
                 background-color: #F7F9FB;\n\
                 border-radius: 3px;\n\
                 z-index: 200;\n\
+                text-align: left;\n\
             }\n\
         ');
 
