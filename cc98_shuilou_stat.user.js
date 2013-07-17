@@ -114,7 +114,7 @@
                 success: function(text) {
                     parsePage(text);
                 },
-                async: (i === totalPage) ? false : true
+                async: (i >= totalPage - 10) ? false : true
             });
         }
         showStat();
