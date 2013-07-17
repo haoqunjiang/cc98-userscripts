@@ -106,6 +106,7 @@
         var reForNum = /<span id="topicPagesNavigation">本主题贴数\s*<b>(\d+)<\/b>/g;
         var num = parseInt((document.documentElement.innerHTML.match(reForNum))[0].replace(reForNum, "$1"));
         var totalPage = Math.ceil(num / 10);
+        if (totalPage > 1000) totalPage = 1000;
         var urlParams = qs(window.location.href);
         for (i = 1; i <= totalPage; ++i) {
             ajax({
