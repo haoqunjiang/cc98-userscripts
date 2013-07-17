@@ -145,7 +145,7 @@
         var sortedKey = Object.keys(stat).sort(function(a, b) { return stat[b] - stat[a]; });   // descending order
         sortedKey.forEach(function(ele, index, arr) {
             var li = document.createElement("li");
-            li.innerHTML = ('[' + (index+1) + ']' + ele + ": " + stat[ele]);
+            li.innerHTML = ('[' + (index+1) + '] ' + ele + ": " + stat[ele]);
             ol.appendChild(li);
         });
 
