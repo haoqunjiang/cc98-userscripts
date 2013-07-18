@@ -84,7 +84,7 @@
         progressMsg.id = "stat-progress";
         progressMsg.style.color = "red";
 
-        var tmp = xpath("//td/a[contains(@href, 'vote')]")[0].parentNode;
+        var tmp = xpath("//td/a/img[@src='pic/blue/votenew.gif']")[0].parentNode.parentNode;
         tmp.appendChild(statBtn);
         tmp.appendChild(document.createElement("br"));
         tmp.appendChild(progressMsg);
