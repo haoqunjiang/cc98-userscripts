@@ -18,17 +18,13 @@
 // thanks to ltt_Real, 如嫣
 
 // todo:
-// 屏蔽用户、屏蔽签名档、屏蔽头像
-// 发米机
+// 选项界面
 // 增加「下一页」按钮
-
 // 快速回复界面（模仿如嫣的脚本，但应当更易于扩展，并优化界面）
-// AJAX回复、自动读秒、多重引用、相对链接
-// 给链接加上新窗口打开功能（似乎这功能有点没必要？）
+// AJAX回复、自动读秒、多重引用
 // @功能
 // 自定义表情
 // 马甲切换器（优化一下界面，提供顶贴功能）
-// ID备注（带心灵显ID功能）
 
 (function() {
 var options = {
@@ -234,7 +230,7 @@ function parseDOM() {
         // add classes and ids tto the nodes
         // 暂未考虑到心灵之约
         postList.forEach(function (post, index, array) {
-            addClass(post, "post_block");
+            addClass(post, "post-block");
 
             // 发帖用户
             var tmp = xpath("tbody/tr[1]/td[1]/table/tbody/tr/td[1]/a/span/b", post);
