@@ -121,7 +121,7 @@
                     parsePage(text);
                     $("stat-progress").innerHTML = "正在统计第" + i + "页……";
                 },
-                async: (i >= totalPage - 10 || i % 6 === 0) ? false : true
+                async: (i >= totalPage - 10 || i % 10 === 0) ? false : true
             });
         }
         $("stat-progress").innerHTML = "";
@@ -129,7 +129,7 @@
     }
 
     function parsePage(text) {
-        var reForName = /<span style=\"color:\s*\#\d{6}\s*;\"><b>([^<]+)<\/b><\/span>/g;
+        var reForName = /<span style=\"color:\s*\#\w{6}\s*;\"><b>([^<]+)<\/b><\/span>/g;
         var spanArr = text.match(reForName);
         spanArr.forEach(function(ele, index, arr) {
             var name = ele.replace(reForName, "$1");
@@ -147,17 +147,17 @@
 
         var statDiv = document.createElement("div");
         statDiv.id = "stat-box";
-        var ol = document.createElement("ol");
-        ol.style.listStyle = "none";
+        var ul = document.createElement("ul");
+        ul.style.listStyle = "none";
 
         var sortedKey = Object.keys(stat).sort(function(a, b) { return stat[b] - stat[a]; });   // descending order
         sortedKey.forEach(function(ele, index, arr) {
             var li = document.createElement("li");
             li.innerHTML = ('[' + (index+1) + '] ' + ele + ": " + stat[ele]);
-            ol.appendChild(li);
+            ul.appendChild(li);
         });
 
-        statDiv.appendChild(ol);
+        statDiv.appendChild(ul);
 
         document.body.appendChild(mask);
         document.body.appendChild(statDiv);
