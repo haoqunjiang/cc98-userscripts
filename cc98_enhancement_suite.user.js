@@ -28,28 +28,11 @@
 
 (function() {
 var options = {
-    // 回复选项
-    autoSave: true,                 // 自动保存输入框里的内容
-    autoReply: true,                // 10秒错误后自动读秒回复
-    enableMultiquote: false,        // 默认不多重引用
-    useRelativeUrl: true,           // 使用相对链接
-    useUrlTitle: false,             // 把站内链接替换成链接指向的帖子名，优先级高于「使用相对链接」。（注意对logout页面进行判断）
-    viewOriginalPost: true,         // 在引用中加入"查看原帖"
-    blockQuotedEmotions: false,     // 是否屏蔽引用里的表情和图片
-
     // 网站显示选项
     blockedIds: ['竹林来客'],        // 被屏蔽的ID列表，用双引号（""）括住，半角逗号（,）分隔
     blockQmd: false,                // 是否屏蔽签名档
     blockAvatars: false,            // 是否屏蔽头像
     useImageViewer: false,          // 待实现：图片浏览器
-
-    // 次级选项，懒得再分离出来了
-    autoSaveInterval: 0.5,          // 自动保存间隔(分钟)
-    expireTime: 30,                 // 帖子内容过期时间(分钟)
-    maxTextareaLength: 16240,       // 文本框的最大输入长度(字节数)
-    maxSubjectLength: 100,          // 主题框的最大输入长度(字节数)
-    viaString: "|查看原帖|",         // 查看原帖的提示文字
-    viaColor: "seagreen",           //「查看原帖」的颜色
 };
 
 /* 各种辅助函数 */
@@ -116,16 +99,6 @@ var toQueryString = function(obj) {
         ret.push(encodeURIComponent(key) + "=" + encodeURIComponent(obj[key]));
     }
     return ret.join("&");
-};
-
-var path = function(url) {
-    var url = url.toLowerCase();
-
-    if (url === "http://www.cc98.org") {
-        url = "http://www.cc98.org/"
-    }
-
-    return "/" + url.split("/")[3].split("?")[0];  // paths such as "list.asp"
 };
 
 // 在Scriptish中似乎不能对Element.prototype进行修改，所以暂时只能这样了
@@ -205,7 +178,7 @@ var submit_btn = xpath("//input[@name='Submit']");
 // 解析当前页面，获取以及更改一些DOM元素
 // 主要用于屏蔽选项
 function parseDOM() {
-    if (path(window.location.href) === "/dispbbs.asp") {
+    if (window.location.pathname === "/dispbbs.asp") {
         // 一般是第7-16个table，不过启用指定用户可见后是第8-17个table
         for (var first = 7, last = 16; first <= last; first++) {
             var post = xpath("/html/body/table[" + first + "]");

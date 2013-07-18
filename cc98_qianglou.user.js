@@ -29,7 +29,7 @@ $(function() {
 
     // parse the url get parameters
     function qs(url) {
-        url = url.toLowerCase().split("#")[0];
+        url = url.toLowerCase();
         var t = url.indexOf("?");
         var hash = {};
         if (t > 0) {
@@ -119,7 +119,7 @@ $(function() {
     // checks and stores the options and calls qianglou()
     function storeOptions () {
         // check and store qianglou options in session storage
-        var url = window.location.href;
+        var url = window.location.href.split("#")[0];
 
         var content = $("#content").val();
         if (!content) {

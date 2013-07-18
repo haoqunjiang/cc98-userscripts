@@ -59,7 +59,7 @@ var ajax = function(opts) {
 };
 
 var getQueryString = function(url) {
-    url = url.toLowerCase().split("#")[0];
+    url = url.toLowerCase()
     var t = url.indexOf("?");
     var hash = {};
     if (t > 0) {
@@ -315,7 +315,7 @@ function startDistribute(e) {
     // ommited here
 
     // format the url and then redirect
-    var qs = getQueryString(window.location.href);
+    var qs = getQueryString(window.location.search);
     window.location.href = "http://www.cc98.org/dispbbs.asp?" + toQueryString({
         "boardid": qs["boardid"],
         "id": qs["id"],
@@ -333,7 +333,7 @@ function startDistribute(e) {
 
 // 根据当前页面url中的distributing是否为true来判断是否需要发米
 function distribute() {
-    var qs = getQueryString(window.location.href);
+    var qs = getQueryString(window.location.search);
     if (qs["distributing"] !== "true") {
         return;
     }

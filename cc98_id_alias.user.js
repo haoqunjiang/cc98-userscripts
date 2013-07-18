@@ -49,7 +49,7 @@ $(function() {
 
     // parse the url get parameters
     function qs(url) {
-        url = url.toLowerCase().split("#")[0];
+        url = url.toLowerCase()
         var t = url.indexOf("?");
         var hash = {};
         if (t > 0) {
@@ -77,11 +77,17 @@ $(function() {
                         .parent().parent().parent().parent().prev();
         userBlocks.each(function(index, ele) {
             this.id = "user-block-" + index;
+            $(this).addClass("user-block");
         });
 
         var idNodes = userBlocks.find("b");
         idNodes.each(function(index, ele) {
             var idNode = $(this);
+            if (qs(window.location.search)["boardid"] !== "182") {
+                idNode = idNode.parent().parent();
+            } else {
+                idNode = idNode.parent();
+            }
             var id = idNode.text();
             var alias = localStorage.getItem(id);
 
@@ -112,7 +118,7 @@ $(function() {
                 var newAlias = prompt("请输入备注名（更新备注后请刷新页面）", curAlias);
 
                 if (newAlias) {
-                    if (qs(window.location.href)["boardid"] === "182" && curAlias === "") {    // 心灵，新增备注
+                    if (qs(window.location.search)["boardid"] === "182" && curAlias === "") {    // 心灵，新增备注
 
                         var newRecord = {};
                         var recordExist = false;
@@ -143,7 +149,7 @@ $(function() {
                     }
                 } else if (newAlias === "" && $(this).hasClass("id-alias")) {  // 删除已有备注
 
-                    if (qs(window.location.href)["boardid"] === "182") {    // 心灵
+                    if (qs(window.location.search)["boardid"] === "182") {    // 心灵
 
                         // 把对应的更新地址删掉
                         for (var i = 0; i != savedRecords.length; ++i) {
