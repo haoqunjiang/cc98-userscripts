@@ -10,9 +10,14 @@
 // @run-at         document-end
 // ==/UserScript==
 
+// 正在试图写一个JavaScripr SDK for cc98
+// 这个脚本用来测试一些单独的函数
+// 实际SDK大致是面向对象的
+// 非官方，纯蛋疼
+// 想了想还是懒得实现了。暂时只考虑dispbbs有关的部分
+// 不面向对象了
+
 $(function() {
-// function format:
-// function(opts)
 
 var FAMI_URL = "http://www.cc98.org/master_users.asp?action=award";
 var PM_URL = "http://www.cc98.org/messanger.asp?action=send";
@@ -21,14 +26,14 @@ var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?"
 
 // 发米/扣米
 // opts["fami"]         {boolean} 发米/扣米
-// opts["url"]      {string} 贴子地址
+// opts["url"]          {string} 贴子地址
 // opts["announceid"]   /\d+/ 回帖ID
 // opts["amount"]       /\d{1,3}|1000/ 发米/扣米数量
 // opts["reason"]       {string} 发米理由
 // opts["ismsg"]        {boolean} 站短/不站短
 // 以下为可选项
 // opts["async"]        {boolean} 是否异步（默认为真）
-// opts["callback"]     function(responseText)
+// opts["callback"]     function(responseText) 回调函数
 function faMi(opts) {
     if (opts["async"] === undefined) {
         opts["async"] = true;
@@ -69,7 +74,7 @@ function faMi(opts) {
 // opts["viewerfilter"]     {boolean} 使用指定用户可见
 // opts["allowedviewers"]   {string} 可见用户
 // opts["async"]            {boolean} 是否异步（默认为真）
-// opts["callback"]         function(responseText)
+// opts["callback"]         function(responseText) 回调函数
 function reply(opts) {
     opts["async"] = opts["async"] | (opts["async"] === undefined);
     var params = parseQS(opts["url"]);
@@ -113,7 +118,7 @@ function reply(opts) {
 // opts["message"]      {string} 站短内容
 // 以下为可选项
 // opts["async"]        {boolean} 是否异步（默认为真）
-// opts["callback"]     function(responseText)
+// opts["callback"]     function(responseText) 回调函数
 function sendPM(opts) {
     opts["async"] = opts["async"] | (opts["async"] === undefined);
     $.ajax({
