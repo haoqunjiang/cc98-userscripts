@@ -12,22 +12,24 @@
 
 $(function() {
     // function format:
-    // function(options, callback)
+    // function(options)
 
     var FAMI_URL = "http://www.cc98.org/master_users.asp?action=award";
     var PM_URL = "http://www.cc98.org/messanger.asp?action=send";
     var POST_URL = "http://www.cc98.org/SaveReAnnounce.asp?BoardID="
 
-    // 发米/扣米（同步）
+    // 发米/扣米
     // options["fami"]          {boolean} 发米/扣米
-    // options["boardid"]       {/\d+/} 版面ID
-    // options["topicid"]       {/\d+/} 贴子ID
-    // options["announceid"]    {/\d+/} 回帖ID
-    // options["amount"]        {integer[0-1000]} 发米/扣米数量
+    // options["boardid"]       /\d+/ 版面ID
+    // options["topicid"]       /\d+/ 贴子ID
+    // options["announceid"]    /\d+/ 回帖ID
+    // options["amount"]        /\d{1,3}|1000/ 发米/扣米数量
     // options["reason"]        {string} 发米理由
     // options["ismsg"]         {boolean} 站短/不站短
-    // callback                 function(responseText)
-    function fami(options, callback) {
+    // options["async"]         {boolean} 是否异步（默认为真）
+    // options["callback"]      function(responseText)
+    function fami(options) {
+        options["async"] = options["async"] | (options["async"] === undefined);
         $.ajax({
             "type": "POST",
             "url": FAMI_URL,
@@ -40,25 +42,33 @@ $(function() {
                 "content": options["reason"],
                 "ismsg": options["ismsg"] ? "on" : ""
             },
-            "success": callback,
-            "async": false
+            "success": options["callback"],
+            "async": options["async"]
         });
     }
 
-    // 回贴（异步）
-    // options["url"]           贴子地址
-    // options["cookies]        用户cookie
-    // options["subject"]       发贴主题
-    // options["expression"]    发贴心情
-    // options["content"]       回贴内容
+    // 回贴
+    // options["url"]               {string} 贴子地址
+    // options["cookies]            {string} 用户cookie
+    // options["subject"]           {string} 发贴主题
+    // options["expression"]        /face([01]\d)|(2[0-2])/ 发贴心情
+    // options["content"]           {string} 回贴内容
+    // options["replyid"]           /\d+/ 引用的贴子的announceid
+    // options["sendsms"]           {boolean} 站短提示
+    // options["viewerfilter"]      {boolean} 使用指定用户可见
+    // options["allowedviewers"]    {string} 可见用户
+    // options["async"]             {boolean} 是否异步（默认为真）
+    // options["callback"]          function(responseText)
 
 
     // 站短（异步）
     // options["recipient"]     收件人
     // options["subject"]       站短标题
     // options["message"]       站短内容
-    // callback                 function(responseText)
-    function sendPM(options, callback) {
+    // options["async"]         {boolean} 是否异步（默认为真）
+    // options["callback"]      function(responseText)
+    function sendPM(options) {
+        options["async"] = options["async"] | (options["async"] === undefined);
         $.ajax({
             "type": "POST",
             "url": PM_URL,
@@ -67,11 +77,12 @@ $(function() {
                 "title": options["subject"],
                 "message": options["message"]
             },
-            "success": callback,
-            "async": false
+            "success": options["callback"],
+            "async": options["async"];
         });
     }
 
+    // helper functions
     function parseCookies(theCookie) {
         var cookies = {};           // The object we will return
         var all = theCookie;        // Get all cookies in one big string
