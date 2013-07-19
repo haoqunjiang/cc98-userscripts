@@ -17,6 +17,9 @@
 // 想了想还是懒得实现了。暂时只考虑dispbbs有关的部分
 // 不面向对象了
 
+// todo:
+// 正则解析页面元素
+
 $(function() {
 
 var FAMI_URL = "http://www.cc98.org/master_users.asp?action=award";
@@ -78,9 +81,9 @@ function faMi(opts) {
 function reply(opts) {
     opts["async"] = opts["async"] | (opts["async"] === undefined);
     var params = parseQS(opts["url"]);
-    var postUrl = POST_URL + "&boardID=" + params["boardid"];
+    var postURL = POST_URL + "&boardID=" + params["boardid"];
     if (opts["edit"]) {
-        postUrl = EDIT_URL + "boardID=" + params["boardid"] + "&replyID=" + opts["replyid"] + "&id=" + params["id"];
+        postURL = EDIT_URL + "boardID=" + params["boardid"] + "&replyID=" + opts["replyid"] + "&id=" + params["id"];
     }
 
     var data = {
@@ -103,14 +106,13 @@ function reply(opts) {
 
     $.ajax({
         "type": "POST",
-        "url": postUrl,
+        "url": postURL,
         "data": data,
         "success": opts["callback"],
         "async": opts["async"],
         
     });
 }
-
 
 // 站短（异步）
 // opts["recipient"]    {string} 收件人
@@ -134,23 +136,35 @@ function sendPM(opts) {
     });
 }
 
-// helper functions
-function parseCookies(theCookie) {
-    var cookies = {};           // The object we will return
-    var all = theCookie;        // Get all cookies in one big string
-    if (all === "")             // If the property is the empty string
-        return cookies;         // return an empty object
-    var list = all.split("; "); // Split into individual name=value pairs
-    for(var i = 0; i < list.length; i++) {  // For each cookie
-        var cookie = list[i];
-        var p = cookie.indexOf("=");        // Find the first = sign
-        var name = cookie.substring(0,p);   // Get cookie name
-        var value = cookie.substring(p+1);  // Get cookie value
-        value = decodeURIComponent(value);  // Decode the value
-        cookies[name] = value;              // Store name and value in object
+// 格式化网址，去除无用的参数并转为相对链接
+function formatURL(url) {
+    var urlObj = parseURL(url);
+
+    // 不在www.cc98.org域名下
+    if (urlObj["host"] != "www.cc98.org") {
+        return url;
     }
-    return cookies;
-};
+
+    // http://www.cc98.org/
+    if (!urlObj["path"]) {
+        return "/";
+    }
+
+    var params = parseQS(urlObj["query"]);
+    var hash = urlObj["hash"] ? ("#" + urlObj["hash"]) : ""
+
+    // 不是dispbbs.asp开头的链接，只去掉空的get参数，转为相对链接，不做其他处理
+    if (urlObj["path"] === "dispbbs,asp") {
+        return "/" + urlObj["path"] + "?" + toQS(params) + hash;
+    }
+
+    // 去掉replyid，page和值为1的star
+    params["replyid"] = "";
+    params["page"] = "";
+    params["star"] = (params["star"] === "1") ? "" : params["star"];
+    return "/" + urlObj["path"] + "?" + toQS(params) + hash;
+}
+
 
 // parse the url get parameters
 function parseQS(url) {
@@ -167,6 +181,49 @@ function parseQS(url) {
         hash[decodeURIComponent(val[0])] = decodeURIComponent(val[1]);
     }
     return hash;
+};
+
+function toQS(obj) {
+    var ret = [];
+    for (var key in obj) {
+        if ("" === key) continue;
+        if ("" === obj[key]) continue;
+        ret.push(encodeURIComponent(key) + "=" + encodeURIComponent(obj[key]));
+    }
+    return ret.join("&");
+};
+
+function parseURL(url) {
+    // from JavaScript: The Good Parts
+    var parse_url = /^(?:([A-Za-z]+):)?(\/{0,3})([0-9.\-A-Za-z]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?([^#]*))?(?:#(.*))?$/
+    var arr = parse_url.exec(url);
+    var result = {};
+    result["url"] = arr[0];
+    result["scheme"] = arr[1];
+    result["slash"] = arr[2];
+    result["host"] = arr[3];
+    result["port"] = arr[4];
+    result["path"] = arr[5];
+    result["query"] = arr[6];
+    result["hash"] = arr[7];
+    return result;
+}
+
+function parseCookies(theCookie) {
+    var cookies = {};           // The object we will return
+    var all = theCookie;        // Get all cookies in one big string
+    if (all === "")             // If the property is the empty string
+        return cookies;         // return an empty object
+    var list = all.split("; "); // Split into individual name=value pairs
+    for(var i = 0; i < list.length; i++) {  // For each cookie
+        var cookie = list[i];
+        var p = cookie.indexOf("=");        // Find the first = sign
+        var name = cookie.substring(0,p);   // Get cookie name
+        var value = cookie.substring(p+1);  // Get cookie value
+        value = decodeURIComponent(value);  // Decode the value
+        cookies[name] = value;              // Store name and value in object
+    }
+    return cookies;
 };
 
 });
