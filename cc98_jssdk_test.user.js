@@ -14,18 +14,25 @@
 // 这个脚本用来测试一些单独的函数
 // 实际SDK大致是面向对象的
 // 非官方，纯蛋疼
+
 // 想了想还是懒得实现了。暂时只考虑dispbbs有关的部分
 // 不面向对象了
+// 页面解析部分没有考虑简版（其实要是只考虑简版的话会简单很多啊）
 
 // todo:
-// 正则解析页面元素
+// 正则解析页面回贴
+// 上传文件
 
 $(function() {
 
 var FAMI_URL = "http://www.cc98.org/master_users.asp?action=award";
 var PM_URL = "http://www.cc98.org/messanger.asp?action=send";
-var POST_URL = "http://www.cc98.org/SaveReAnnounce.asp?method=Topic"
-var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?"
+var POST_URL = "http://www.cc98.org/SaveReAnnounce.asp?method=Topic";
+var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?";
+
+var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
+var ANNOUNCEID_RE = /<a name="(\d{2,})">/g;  // 注意网页上<a name="1">之类的标签是作为#0的anchor出现的
+var ARTICLE_ID = / /g;
 
 // 发米/扣米
 // opts["fami"]         {boolean} 发米/扣米
@@ -136,6 +143,28 @@ function sendPM(opts) {
     });
 }
 
+// 获取页面中的用户列表和回贴ID
+// 返回的数组中的每个对象有username和announceid两个属性
+// todo: 返回发贴心情和回贴内容的ubb代码
+function parseTopicPage(htmlText) {
+    var articleList = [];
+    var nameArr = htmlText.match(NAME_RE);
+    nameArr.forEach(function(name, index, arr) {
+        var article = {};
+        article["username"] = name.replace(NAME_RE, "$1");
+        articleList.push(article);
+    });
+    var idArr = htmlText.match(ANNOUNCEID_RE);
+    // 考虑到心灵没有announceid，所以idArr可能为空
+    if (idArr) {
+        idArr.forEach(function(id, index, arr) {
+            articleList[index]["announceid"] = id.replace(ANNOUNCEID_RE, "$1");
+        });
+    }
+
+    return articleList;
+}
+
 // 格式化网址，去除无用的参数并转为相对链接
 function formatURL(url) {
     var urlObj = parseURL(url);
@@ -158,10 +187,12 @@ function formatURL(url) {
         return "/" + urlObj["path"] + "?" + toQS(params) + hash;
     }
 
-    // 去掉replyid，page和值为1的star
-    params["replyid"] = "";
-    params["page"] = "";
-    params["star"] = (params["star"] === "1") ? "" : params["star"];
+    // 如果不是在追踪页面，就去掉replyid
+    if (!params["trace"]) {
+        params["replyid"] = "";
+    }
+    params["page"] = "";    // 去掉page
+    params["star"] = (params["star"] === "1") ? "" : params["star"];    // star=1时去掉
     return "/" + urlObj["path"] + "?" + toQS(params) + hash;
 }
 
