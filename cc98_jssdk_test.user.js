@@ -21,7 +21,8 @@
 // 很多错误处理懒得写了，反正在我自己用这些函数的时候不会犯那么傻的错误的
 
 // todo:
-// totalPage()
+// postCount()
+// pageCount()
 // 上传文件
 
 // 全局变量
@@ -40,7 +41,7 @@ var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
 var ANNOUNCEID_RE = /<a name="(\d{2,})">/g;
 
 // 还未考虑被删除的帖子
-var POST_RE = /(?:\s<span id="ubbcode[^>]*>(.*)<\/span>)|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止/ig;
+var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止/ig;
 var REPLYVIEW_RE = /<hr noshade size=1>.*<hr noshade size=1>/ig;
 
 var POST_TIME_RE = /<\/a>\s*([^P]*PM)/g;
@@ -345,5 +346,4 @@ helper = {
     }
 };
 
-console.log(soda.parseTopicPage(document.body.innerHTML))
 })();
