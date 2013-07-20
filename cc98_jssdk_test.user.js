@@ -20,7 +20,6 @@
 // 页面解析部分没有考虑简版（其实要是只考虑简版的话会简单很多啊）
 
 // todo:
-// 正则解析页面回贴
 // 上传文件
 // 给每个函数加上错误处理
 
@@ -134,6 +133,7 @@ function reply(opts) {
 // opts["callback"]     function(responseText) 回调函数
 function sendPM(opts) {
     opts["async"] = opts["async"] | (opts["async"] === undefined);
+
     $.ajax({
         "type": "POST",
         "url": PM_URL,
@@ -155,7 +155,7 @@ function sendPM(opts) {
 //         "announceid": "703654358"
 //     },
 // ],
-// todo: 返回发贴心情，发贴时间，回贴内容的ubb代码
+// todo: 返回发贴时间
 function parseTopicPage(htmlText) {
     var articleList = [];
     
