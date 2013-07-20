@@ -30,7 +30,7 @@ var soda, helper;
 
 var FAMI_URL = "http://www.cc98.org/master_users.asp?action=award";
 var PM_URL = "http://www.cc98.org/messanger.asp?action=send";
-var POST_URL = "http://www.cc98.org/SaveReAnnounce.asp?method=Topic";
+var REPLY_URL = "http://www.cc98.org/SaveReAnnounce.asp?method=Topic";
 var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?";
 
 var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
@@ -39,8 +39,11 @@ var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
 var ANNOUNCEID_RE = /<a name="(\d{2,})">/g;
 
 // 还未考虑被删除的帖子
-var ARTICLE_RE = /(?:\s<span id="ubbcode[^>]*>(.*)<\/span>)|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止/ig;
+var POST_RE = /(?:\s<span id="ubbcode[^>]*>(.*)<\/span>)|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止/ig;
 var REPLYVIEW_RE = /<hr noshade size=1>.*<hr noshade size=1>/ig;
+
+var POST_TIME_RE = /<\/a>\s*([^P]*PM)/g;
+
 
 // 考虑到下面的函数的callback都只接受boolean作为参数
 // 而ajax请求的callback参数是responseText，故写了这样一个function generator
@@ -55,11 +58,11 @@ function cc98CallbackGen(callback) {
 }
 
 // 98相关的函数接口
-// faMi, reply, sendPM, parseTopicPage, getArticleContent, formatURL
+// faMi, reply, sendPM, parseTopicPage, getPostContent, formatURL
 soda = {
 
     // 发米/扣米
-    // @param {string}      opts.url 贴子地址
+    // @param {string}      opts.url 帖子地址
     // @param {Number}      opts.announceid 回帖ID
     // @param {Number}      opts.amount 发米/扣米数量[0-1000]
     // @param {string}      opts.reason 发米理由
@@ -91,15 +94,15 @@ soda = {
         });
     },
 
-    // 回贴
-    // @param {string}  opts.url 贴子地址
-    // @param {string}  opts.expression 发贴心情
-    // @param {string}  opts.content 回贴内容
+    // 回帖
+    // @param {string}  opts.url 帖子地址
+    // @param {string}  opts.expression 发帖心情
+    // @param {string}  opts.content 回帖内容
     // @param {string}  opts.password md5加密后的密码（可以从cookie中获取）
     // @param {string}  [opts.username] 用户名
-    // @param {string}  [opts.subject] 发贴主题
-    // @param {Number}  [opts.replyid] 引用的贴子的announceid
-    // @param {boolean} [opts.edit] 是否是在编辑已发布的贴子（是的话必须提供replyid）
+    // @param {string}  [opts.subject] 发帖主题
+    // @param {Number}  [opts.replyid] 引用的帖子的announceid
+    // @param {boolean} [opts.edit] 是否是在编辑已发布的帖子（是的话必须提供replyid）
     // @param {boolean} [opts.sendsms] 站短提示
     // @param {boolean} [opts.viewerfilter] 使用指定用户可见
     // @param {string}  [opts.allowedviewers] 可见用户
@@ -107,7 +110,7 @@ soda = {
     // @param {function(success)} [opts.callback=function(){}] 回调函数
     reply: function(opts) {
         var params = helper.parseQS(opts["url"]);
-        var postURL = POST_URL + "&boardID=" + params["boardid"];
+        var postURL = REPLY_URL + "&boardID=" + params["boardid"];
         if (opts["edit"]) {
             postURL = EDIT_URL + "boardID=" + params["boardid"] + "&replyID=" + opts["replyid"] + "&id=" + params["id"];
         }
@@ -160,49 +163,49 @@ soda = {
         });
     },
 
-    // 获取页面中的用户列表和回贴ID
-    // 返回格式
-    // [
-    //     {
-    //         "username": "苏打绿茶",
-    //         "announceid": "703654358"
-    //     },
-    // ],
-    // todo: 返回发贴时间
+    // 获取页面中的用户列表，回帖时间回帖ID
+    // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
     parseTopicPage: function(htmlText) {
-        var articleList = [];
+        var postList = [];
         
         var nameArr = htmlText.match(NAME_RE);
         nameArr.forEach(function(name, index, arr) {
-            var article = {};
-            article["username"] = name.replace(NAME_RE, "$1");
-            articleList.push(article);
+            var post = {};
+            post["username"] = name.replace(NAME_RE, "$1");
+            postList.push(post);
         });
 
         var idArr = htmlText.match(ANNOUNCEID_RE);
         // 考虑到心灵没有announceid，所以idArr可能为空
         if (idArr) {
             idArr.forEach(function(id, index, arr) {
-                articleList[index]["announceid"] = id.replace(ANNOUNCEID_RE, "$1");
+                postList[index]["announceid"] = id.replace(ANNOUNCEID_RE, "$1");
             });
         }
 
-        return articleList;
+        var timeArr = htmlText.match(POST_TIME_RE);
+        if (timeArr) {
+            timeArr.forEach(function(t, index, arr) {
+                postList[index]["posttime"] = t.replace(POST_TIME_RE, "$1");
+            })
+        }
+
+        return postList;
     },
 
-    // 回贴内容如果要从html转成ubb的话太麻烦
+    // 回帖内容如果要从html转成ubb的话太麻烦
     // 但是没有执行js的rawhtml里有包含ubb代码
-    // 所以为了方便起见，把获取贴子内容的功能独立出来
+    // 所以为了方便起见，把获取帖子内容的功能独立出来
     // 使用一个sync的ajax请求获取rawhtml再解析
-    getArticleContent: function(url, storey) {
+    getPostContent: function(url, storey) {
         var result;
         helper.ajax({
             "type": "GET",
             "url": url,
             "success": function(rawhtml) {
                 for (var i = 0; i != storey-1; ++i)
-                    ARTICLE_RE.exec(rawhtml)
-                result = ARTICLE_RE.exec(rawhtml)[1] || "";
+                    POST_RE.exec(rawhtml)
+                result = POST_RE.exec(rawhtml)[1] || "";
                 result = result
                     .replace(REPLYVIEW_RE, "")
                     .replace(/<br>/ig, "\n");
@@ -341,7 +344,5 @@ helper = {
     }
 };
 
-
-console.log(soda.getArticleContent(location.href, 3))
-
+console.log(soda.parseTopicPage(document.body.innerHTML))
 })();
