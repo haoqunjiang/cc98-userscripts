@@ -34,7 +34,8 @@ var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?";
 var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
 var ANNOUNCEID_RE = /<a name="(\d{2,})">/g;  // 注意网页上<a name="1">之类的标签是作为#0的anchor出现的
 // ubb到html的转码是在客户端执行的，所以对页面源码可以直接匹配正则然后获取ubb
-var ARTICLE_RE = /<br>\s+<span id="ubbcode\d+">(.*)<\/span>/g;  //还未考虑回复可见、楼主可见、指定用户可见、被删除、被屏蔽的帖子
+var ARTICLE_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>/ig; //还未考虑回复可见、楼主可见、指定用户可见、被删除、被屏蔽的帖子
+
 
 // 发米/扣米
 // opts["fami"]         {boolean} 发米/扣米
@@ -181,7 +182,28 @@ function parseTopicPage(htmlText) {
 // 所以为了方便起见，把获取贴子内容的功能独立出来
 // 使用一个sync的ajax请求获取rawhtml再解析
 function getArticleContent(url, storey) {
-    // body...
+    var result;
+    $.ajax({
+        "type": "GET",
+        "url": url,
+        "success": function(rawhtml) {
+            result = rawhtml.match(ARTICLE_RE)[storey-1];
+            result = result.replace(ARTICLE_RE, "$1");
+            result = result.replace(/<br>/ig, "\n");
+        },
+        "async": false
+    });
+    return unescapeHTML(result);
+}
+
+// 将部分常见的转义后的html转回来
+function unescapeHTML(htmlText) {
+    return htmlText
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, "\"")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&nbsp;/g, " ");
 }
 
 // 格式化网址，去除无用的参数并转为相对链接
