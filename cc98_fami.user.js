@@ -123,7 +123,7 @@ $(function() {
               max-width: 200px;\n\
             }\n\
             #begin-page, #end-page {\n\
-              width: 50px;\n\
+              width: 75px;\n\
             }\n\
             #begin-storey, #end-storey, #times {\n\
               width: 40px;\n\
