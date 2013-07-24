@@ -21,12 +21,10 @@
 // 很多错误处理懒得写了，反正在我自己用这些函数的时候不会犯那么傻的错误的
 
 // todo:
-// postCount()
-// pageCount()
 // 上传文件
 
 // 全局变量
-var soda, helper;
+var $cc98, helper;
 
 (function() {
 
@@ -34,6 +32,8 @@ var FAMI_URL = "http://www.cc98.org/master_users.asp?action=award";
 var PM_URL = "http://www.cc98.org/messanger.asp?action=send";
 var REPLY_URL = "http://www.cc98.org/SaveReAnnounce.asp?method=Topic";
 var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?";
+
+var POST_COUNT_RE = /<span id="topicPagesNavigation">本主题贴数 <b>(\d+)<\/b>/g
 
 var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
 
@@ -44,7 +44,7 @@ var ANNOUNCEID_RE = /<a name="(\d{2,})">/g;
 var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止/ig;
 var REPLYVIEW_RE = /<hr noshade size=1>.*<hr noshade size=1>/ig;
 
-var POST_TIME_RE = /<\/a>\s*([^P]*PM)/g;
+var POST_TIME_RE = /<\/a>\s*([^AP]*[AP]M)\s*<\/td>/g;
 
 
 // 考虑到下面的函数的callback都只接受boolean作为参数
@@ -60,8 +60,8 @@ function cc98CallbackGen(callback) {
 }
 
 // 98相关的函数接口
-// faMi, reply, sendPM, parseTopicPage, getPostContent, formatURL
-soda = {
+// fami, reply, sendPM, parseTopicPage, postCount, pageCount, getPostContent, formatURL
+$cc98 = {
 
     // 发米/扣米
     // @param {string}      opts.url 帖子地址
@@ -69,11 +69,12 @@ soda = {
     // @param {Number}      opts.amount 发米/扣米数量[0-1000]
     // @param {string}      opts.reason 发米理由
     // @param {boolean}     opts.ismsg  站短/不站短
-    // @param {boolean}     [opts.koumi=false] 是否扣米
+    // @param {boolean}     [opts.awardtype=true] 是否发米
     // @param {boolean}     [opts.async=true] 是否异步
     // @param {function(success)} [opts.callback=function(){}] 回调函数，参数为bool类型，表示成功与否
-    faMi: function(opts) {
+    fami: function(opts) {
         opts.callback -= opts.callback || (function() {});
+        opts.awardtype = opts.awardtype || (opts.awardtype === undefined);
 
         var params = helper.parseQS(opts["url"]);
         var boardid = params["boardid"];
@@ -83,7 +84,7 @@ soda = {
             "type": "POST",
             "url": FAMI_URL,
             "data": {
-                "awardtype": opts["koumi"] ? 1 : 0,
+                "awardtype": opts["awardtype"] ? 0 : 1,
                 "boardid": boardid,
                 "topicid": topicid,
                 "announceid": opts["announceid"],
@@ -195,6 +196,14 @@ soda = {
         return postList;
     },
 
+    postCount: function(htmlText) {
+        return parseInt(POST_COUNT_RE.exec(htmlText)[1]);
+    },
+
+    pageCount: function(htmlText) {
+        return Math.ceil($cc98.postCount(htmlText) / 10);
+    },
+
     // 回帖内容如果要从html转成ubb的话太麻烦
     // 但是没有执行js的rawhtml里有包含ubb代码
     // 所以为了方便起见，把获取帖子内容的功能独立出来
@@ -260,7 +269,7 @@ helper = {
         url = url.toLowerCase().split("#")[0];  // remove the hash part
         var t = url.indexOf("?");
         var hash = {};
-        if (t > 0) {
+        if (t >= 0) {
             var params = url.substring(t+1).split("&");
         } else {    // plain query string without "?" (e.g. in cookies)
             var params = url.split("&");
