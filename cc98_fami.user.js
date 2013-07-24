@@ -271,8 +271,8 @@ $(function() {
 
                     // 发米
                     function famiByPage(first, last) {
-                        if (first >= last) {
-                            return pageDone();
+                        if (first > last) {
+                            return pageDone(curPage);
                         }
 
                         var user = users[first-1];  // 当前用户
@@ -298,27 +298,28 @@ $(function() {
                                 if (first < last) {   // 继续发下一层楼
                                     return famiByPage(++first, last);
                                 } else {    // 本页已发完
-                                    return pageDone();
+                                    return pageDone(curPage);
                                 }
                             }
                         });
                     }
 
                     // 结束本页发米
-                    function pageDone(){
+                    function pageDone(thePage){
                         // 更新当前页和总页数
                         // 之所以放在最后，是因为可能从最后发帖时间点进来时curPage是32767，所以至少要保证运行一次
-                        var totalPage = 19;
-                        ++curPage;
+                        // 之所以不用curPage，是因为考虑到异步执行，curPage可能已经变掉了（可能这个想法是错的，但是懒得深究了，反正用参数传递肯定不会出错）
+                        var totalPage = $cc98.pageCount(htmlText);
+                        ++thePage;
 
                         // 完成
-                        if (curPage > totalPage || curPage > lastPage) {
+                        if (thePage > totalPage || thePage > lastPage) {
                             famiPrompt('发米结束，正在跳转……');
                             window.location.reload();
                         }
 
                         // 下一页
-                        _doFami(curPage);
+                        _doFami(thePage);
                     }
 
                     famiByPage(curStorey, endStorey);
