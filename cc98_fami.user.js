@@ -1,13 +1,13 @@
 // ==UserScript==
 // @id             cc98_fami
 // @name           cc98 fami
-// @version        1.0
+// @version        1.1
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    cc98 发米/扣米机
 // @include        http://www.cc98.org/dispbbs.asp*
 // @require        http://file.cc98.org/uploadfile/2013/7/7/1444331657.txt
-// @require        http://file.cc98.org/uploadfile/2013/7/24/22161187765.txt
+// @require        http://file.cc98.org/uploadfile/2013/7/25/3585128322.txt
 // @run-at         document-end
 // ==/UserScript==
 
@@ -250,41 +250,39 @@ $(function() {
         var startStorey = begin % 10 || 10;
         var lastPage = Math.ceil(end / 10);
         var lastStorey = end % 10 || 10;
-        var totalPage = $cc98.pageCount(document.body.innerHTML);
         var famiRecord = {};
         //sessionStorage.setItem('famiRecord', JSON.stringify(famiRecord));
 
         var type = isaward ? '发米' : '扣米';
 
-        for (curPage = startPage; curPage <= lastPage; ++curPage) {
-            if (curPage > totalPage) break;
+        var urlParams = helper.parseQS(window.location.search);
 
-            var urlParams = helper.parseQS(window.location.search);
+        // 全部写成异步的避免出问题
+        function _doFami(curPage) {
             urlParams['star'] = curPage;
             var famiURL = 'http://www.cc98.org/dispbbs.asp?' + helper.toQS(urlParams);
-
             $.ajax({
                 "url": famiURL,
                 "success": function(htmlText) {
-                    //famiPrompt('正在'+ type + '…… 进度：第' + curPage + '页');
-                    var users = $cc98.parseTopicPage(htmlText);
-                    var curStorey = (curPage === startPage) ? startStorey : 1;
-                    var endStorey = (curPage === lastPage) ? lastStorey : users.length;
-                    while (curStorey <= endStorey) {
-                        var user = users[curStorey - 1];
+                    famiPrompt('正在'+ type + '…… 进度：第' + curPage + '页');
+                    var users = $cc98.parseTopicPage(htmlText); // 当页用户列表
+                    var curStorey = (curPage === startPage) ? startStorey : 1;  // 当页开始楼层
+                    var endStorey = (curPage === lastPage && lastStorey <= users.length) ? lastStorey : users.length; // 当页结束楼层
 
-                        // 更新famiRecord
-                        //famiRecord = JSON.parse(sessionStorage.getItem('famiRecord'));
-                        famiRecord[user.username] = famiRecord[user.username] || 0;
-                        //sessionStorage.setItem('famiRecord', JSON.stringify(famiRecord));
-                        
-                        // 发到指定次数，则跳过
-                        //sessionStorage.setItem('fami-username', user.username);
-                        if (times !== 'nolimit' && famiRecord[user.username] >= times ) {
-                            continue;
+                    // 发米
+                    function famiByPage(first, last) {
+                        if (first >= last) {
+                            return pageDone();
                         }
 
-                        // 发米
+                        var user = users[first-1];  // 当前用户
+                        famiRecord[user.username] = famiRecord[user.username] || 0; // 更新famiRecord
+
+                        // 发到指定次数，则跳过
+                        if (times !== 'nolimit' && famiRecord[user.username] >= times ) {
+                            return famiByPage(++first, last);
+                        }
+
                         $cc98.fami({
                             "url": famiURL,
                             "announceid": user.announceid,
@@ -292,25 +290,44 @@ $(function() {
                             "reason": reason,
                             "ismsg": ismsg,
                             "awardtype": isaward,
-                            "async": false,
                             "callback": function(text) {
                                 if (!text.match('论坛错误信息')) {
-                                    //var famiRecord = JSON.parse(sessionStorage.getItem('famiRecord'));
-                                    //var username = sessionStorage.getItem('fami-username');
                                     famiRecord[user.username] += 1;
-                                    //sessionStorage.setItem('famiRecord', JSON.stringify(famiRecord));
+                                }
+
+                                if (first < last) {   // 继续发下一层楼
+                                    return famiByPage(++first, last);
+                                } else {    // 本页已发完
+                                    return pageDone();
                                 }
                             }
                         });
-                        ++curStorey;
                     }
-                },
-                "async": false
-            })
-        }
-        // 完成
-        document.title = "发米结束，正在跳转……";
-        window.location.reload();
+
+                    // 结束本页发米
+                    function pageDone(){
+                        // 更新当前页和总页数
+                        // 之所以放在最后，是因为可能从最后发帖时间点进来时curPage是32767，所以至少要保证运行一次
+                        var totalPage = 19;
+                        ++curPage;
+
+                        // 完成
+                        if (curPage > totalPage || curPage > lastPage) {
+                            famiPrompt('发米结束，正在跳转……');
+                            window.location.reload();
+                        }
+
+                        // 下一页
+                        _doFami(curPage);
+                    }
+
+                    famiByPage(curStorey, endStorey);
+                }
+            });
+        };
+
+        _doFami(startPage);
+
     }
 
     view();
