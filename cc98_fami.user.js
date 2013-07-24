@@ -7,14 +7,11 @@
 // @description    cc98 发米/扣米机
 // @include        http://www.cc98.org/dispbbs.asp*
 // @require        http://file.cc98.org/uploadfile/2013/7/7/1444331657.txt
-// @require        http://file.cc98.org/uploadfile/2013/7/24/18193776738.txt
+// @require        http://file.cc98.org/uploadfile/2013/7/24/22161187765.txt
 // @run-at         document-end
 // ==/UserScript==
 
 $(function() {
-    // console.log的别名
-    var print = console.log;
-
     // 添加CSS
     function addStyles(css) {
         var head = document.getElementsByTagName("head")[0];
@@ -250,11 +247,12 @@ $(function() {
     // use sync ajax post
     function doFami(reason, ismsg, amount, times, begin, end, isaward) {
         var startPage = Math.ceil(begin / 10);
-        var startStorey = begin % 10;
+        var startStorey = begin % 10 || 10;
         var lastPage = Math.ceil(end / 10);
         var lastStorey = end % 10 || 10;
         var totalPage = $cc98.pageCount(document.body.innerHTML);
-        var famiRecord = {};    // 发过米的用户列表和对应的发米次数
+        var famiRecord = {};
+        //sessionStorage.setItem('famiRecord', JSON.stringify(famiRecord));
 
         var type = isaward ? '发米' : '扣米';
 
@@ -268,18 +266,25 @@ $(function() {
             $.ajax({
                 "url": famiURL,
                 "success": function(htmlText) {
-                    famiPrompt('正在'+ type + '…… 进度：第' + curPage + '页');
+                    //famiPrompt('正在'+ type + '…… 进度：第' + curPage + '页');
                     var users = $cc98.parseTopicPage(htmlText);
                     var curStorey = (curPage === startPage) ? startStorey : 1;
                     var endStorey = (curPage === lastPage) ? lastStorey : users.length;
-                    print(curStorey);
-                    print(endStorey);
                     while (curStorey <= endStorey) {
                         var user = users[curStorey - 1];
+
+                        // 更新famiRecord
+                        //famiRecord = JSON.parse(sessionStorage.getItem('famiRecord'));
+                        famiRecord[user.username] = famiRecord[user.username] || 0;
+                        //sessionStorage.setItem('famiRecord', JSON.stringify(famiRecord));
+                        
                         // 发到指定次数，则跳过
+                        //sessionStorage.setItem('fami-username', user.username);
                         if (times !== 'nolimit' && famiRecord[user.username] >= times ) {
                             continue;
                         }
+
+                        // 发米
                         $cc98.fami({
                             "url": famiURL,
                             "announceid": user.announceid,
@@ -288,12 +293,15 @@ $(function() {
                             "ismsg": ismsg,
                             "awardtype": isaward,
                             "async": false,
-                            "callback": function(success) {
-                                if (success) {
-                                    famiRecord[user.username] = famiRecord[user.username] ? famiRecord[user.username] + 1 : 1;
+                            "callback": function(text) {
+                                if (!text.match('论坛错误信息')) {
+                                    //var famiRecord = JSON.parse(sessionStorage.getItem('famiRecord'));
+                                    //var username = sessionStorage.getItem('fami-username');
+                                    famiRecord[user.username] += 1;
+                                    //sessionStorage.setItem('famiRecord', JSON.stringify(famiRecord));
                                 }
                             }
-                        })
+                        });
                         ++curStorey;
                     }
                 },
@@ -302,7 +310,7 @@ $(function() {
         }
         // 完成
         document.title = "发米结束，正在跳转……";
-        window.location.reload(true);
+        window.location.reload();
     }
 
     view();
