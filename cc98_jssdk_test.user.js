@@ -33,7 +33,7 @@ var PM_URL = "http://www.cc98.org/messanger.asp?action=send";
 var REPLY_URL = "http://www.cc98.org/SaveReAnnounce.asp?method=Topic";
 var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?";
 
-var POST_COUNT_RE = /<span id="topicPagesNavigation">本主题贴数 <b>(\d+)<\/b>/g
+var POST_COUNT_RE = /本主题贴数\s*<b>(\d+)<\/b>/ig;
 
 var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
 
@@ -45,19 +45,6 @@ var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用�
 var REPLYVIEW_RE = /<hr noshade size=1>.*<hr noshade size=1>/ig;
 
 var POST_TIME_RE = /<\/a>\s*([^AP]*[AP]M)\s*<\/td>/g;
-
-
-// 考虑到下面的函数的callback都只接受boolean作为参数
-// 而ajax请求的callback参数是responseText，故写了这样一个function generator
-function cc98CallbackGen(callback) {
-    return function (responseText) {
-        if (!responseText.match("论坛错误信息")) {
-            callback(true);
-        } else {
-            callback(false);
-        }
-    }
-}
 
 // 98相关的函数接口
 // fami, reply, sendPM, parseTopicPage, postCount, pageCount, getPostContent, formatURL
@@ -71,9 +58,9 @@ $cc98 = {
     // @param {boolean}     opts.ismsg  站短/不站短
     // @param {boolean}     [opts.awardtype=true] 是否发米
     // @param {boolean}     [opts.async=true] 是否异步
-    // @param {function(success)} [opts.callback=function(){}] 回调函数，参数为bool类型，表示成功与否
+    // @param {function(text)} [opts.callback=function(){}] 回调函数，参数为bool类型，表示成功与否
     fami: function(opts) {
-        opts.callback -= opts.callback || (function() {});
+        opts.callback = opts.callback || (function() {});
         opts.awardtype = opts.awardtype || (opts.awardtype === undefined);
 
         var params = helper.parseQS(opts["url"]);
@@ -92,7 +79,7 @@ $cc98 = {
                 "content": opts["reason"],
                 "ismsg": opts["ismsg"] ? "on" : ""
             },
-            "success": cc98CallbackGen(opts["callback"]),
+            "success": opts["callback"],
             "async": opts["async"]
         });
     },
@@ -110,7 +97,7 @@ $cc98 = {
     // @param {boolean} [opts.viewerfilter] 使用指定用户可见
     // @param {string}  [opts.allowedviewers] 可见用户
     // @param {boolean} [opts.async] 是否异步（默认为真）
-    // @param {function(success)} [opts.callback=function(){}] 回调函数
+    // @param {function(text)} [opts.callback=function(){}] 回调函数
     reply: function(opts) {
         var params = helper.parseQS(opts["url"]);
         var postURL = REPLY_URL + "&boardID=" + params["boardid"];
@@ -140,7 +127,7 @@ $cc98 = {
             "type": "POST",
             "url": postURL,
             "data": data,
-            "success": cc98CallbackGen(opts["callback"]),
+            "success": opts["callback"],
             "async": opts["async"],
             
         });
@@ -151,7 +138,7 @@ $cc98 = {
     // @param {string}  opts.subject 站短标题
     // @param {string}  opts.message 站短内容
     // @param {boolean} [opts.async] 是否异步
-    // @param {function(success)} [opts.callback=function(){}] 回调函数
+    // @param {function(text)} [opts.callback=function(){}] 回调函数
     sendPM: function(opts) {
         helper.ajax({
             "type": "POST",
@@ -161,7 +148,7 @@ $cc98 = {
                 "title": opts["subject"],
                 "message": opts["message"]
             },
-            "success": cc98CallbackGen(opts["callback"]),
+            "success": opts["callback"],
             "async": opts["async"]
         });
     },
@@ -197,7 +184,7 @@ $cc98 = {
     },
 
     postCount: function(htmlText) {
-        return parseInt(POST_COUNT_RE.exec(htmlText)[1]);
+        return parseInt(htmlText.match(POST_COUNT_RE)[0].replace(POST_COUNT_RE, "$1"));
     },
 
     pageCount: function(htmlText) {
