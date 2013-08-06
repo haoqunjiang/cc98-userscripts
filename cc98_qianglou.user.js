@@ -186,7 +186,7 @@ $(function() {
     function monitor (html, target, callback) {
         var re = /<span id="topicPagesNavigation">本主题贴数 <b>(\d+)<\/b>/g;
         var num = parseInt((html.match(re))[0].replace(re, "$1"));
-        if (num === target - 1) {
+        if (num >= target - 1) {
             callback();
         }
     }
@@ -202,7 +202,7 @@ $(function() {
     }
 
     function clear () {
-        alert("完成抢楼！");
+        document.title = "完成抢楼！";
 
         var intervalID = parseInt(getItem("qianglou-intervalid"));
         clearInterval(intervalID);
@@ -221,6 +221,7 @@ $(function() {
 
         showMsg("");
 
+        window.location.reload();
     }
 
     view();
