@@ -9,22 +9,17 @@
 // @run-at         document-end
 // ==/UserScript==
 
-// 正在试图写一个JavaScripr SDK for cc98
-// 这个脚本用来测试一些单独的函数
-// 实际SDK大致是面向对象的
-// 非官方，纯蛋疼
-
-// 想了想还是懒得实现了。暂时只考虑dispbbs有关的部分
-// 不面向对象了
-// 页面解析部分没有考虑简版（其实要是只考虑简版的话会简单很多啊）
-// 注释随便写的没有固定风格，不过大致是遵循JSDoc的
-// 很多错误处理懒得写了，反正在我自己用这些函数的时候不会犯那么傻的错误的
+// 正在试图写一个JavaScripr SDK for cc98，这个脚本用来测试一些单独的函数
+// 非官方，纯蛋疼。暂时懒得完整实现，只考虑dispbbs有关的部分，不面向对象
+// 页面解析部分没有考虑简版（其实要是只考虑简版的话会简单很多啊><）
+// 注释随便写的没有固定风格，大致遵循JSDoc。很多错误处理没写
 
 // todo:
 // 上传文件
+// 修复reply中Content加号被吞的问题
 
 // 全局变量
-var $cc98, helper;
+var _cc98, _lib, _dom;
 
 (function() {
 
@@ -34,21 +29,17 @@ var REPLY_URL = "http://www.cc98.org/SaveReAnnounce.asp?method=Topic";
 var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?";
 
 var POST_COUNT_RE = /本主题贴数\s*<b>(\d+)<\/b>/ig;
-
 var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
-
-// 注意网页上<a name="1">之类的标签是作为#0的anchor出现的
-var ANNOUNCEID_RE = /<a name="(\d{2,})">/g;
+var ANNOUNCEID_RE = /<a name="(\d{2,})">/g; // 注意网页上<a name="1">之类的标签是作为#0的anchor出现的
 
 // 还未考虑被删除的帖子
 var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止/ig;
 var REPLYVIEW_RE = /<hr noshade size=1>.*<hr noshade size=1>/ig;
-
 var POST_TIME_RE = /<\/a>\s*([^AP]*[AP]M)\s*<\/td>/g;
 
 // 98相关的函数接口
 // fami, reply, sendPM, parseTopicPage, postCount, pageCount, getPostContent, formatURL
-$cc98 = {
+_cc98 = {
 
     // 发米/扣米
     // @param {string}      opts.url 帖子地址
@@ -63,11 +54,11 @@ $cc98 = {
         opts.callback = opts.callback || (function() {});
         opts.awardtype = opts.awardtype || (opts.awardtype === undefined);
 
-        var params = helper.parseQS(opts["url"]);
+        var params = _lib.parseQS(opts["url"]);
         var boardid = params["boardid"];
         var topicid = params["id"];
 
-        helper.ajax({
+        _lib.ajax({
             "type": "POST",
             "url": FAMI_URL,
             "data": {
@@ -99,7 +90,7 @@ $cc98 = {
     // @param {boolean} [opts.async] 是否异步（默认为真）
     // @param {function(text)} [opts.callback=function(){}] 回调函数
     reply: function(opts) {
-        var params = helper.parseQS(opts["url"]);
+        var params = _lib.parseQS(opts["url"]);
         var postURL = REPLY_URL + "&boardID=" + params["boardid"];
         if (opts["edit"]) {
             postURL = EDIT_URL + "boardID=" + params["boardid"] + "&replyID=" + opts["replyid"] + "&id=" + params["id"];
@@ -123,7 +114,7 @@ $cc98 = {
             data["allowedviewers"] = opts["allowedviewers"] || "";
         }
 
-        helper.ajax({
+        _lib.ajax({
             "type": "POST",
             "url": postURL,
             "data": data,
@@ -140,7 +131,7 @@ $cc98 = {
     // @param {boolean} [opts.async] 是否异步
     // @param {function(text)} [opts.callback=function(){}] 回调函数
     sendPM: function(opts) {
-        helper.ajax({
+        _lib.ajax({
             "type": "POST",
             "url": PM_URL,
             "data": {
@@ -188,7 +179,7 @@ $cc98 = {
     },
 
     pageCount: function(htmlText) {
-        return Math.ceil($cc98.postCount(htmlText) / 10);
+        return Math.ceil(_cc98.postCount(htmlText) / 10);
     },
 
     // 回帖内容如果要从html转成ubb的话太麻烦
@@ -197,7 +188,7 @@ $cc98 = {
     // 使用一个sync的ajax请求获取rawhtml再解析
     getPostContent: function(url, storey) {
         var result;
-        helper.ajax({
+        _lib.ajax({
             "type": "GET",
             "url": url,
             "success": function(rawhtml) {
@@ -210,12 +201,12 @@ $cc98 = {
             },
             "async": false
         });
-        return helper.unescapeHTML(result);
+        return _lib.unescapeHTML(result);
     },
 
     // 格式化网址，去除无用的参数并转为相对链接
     formatURL: function(url) {
-        var urlObj = helper.parseURL(url);
+        var urlObj = _lib.parseURL(url);
 
         // 不在www.cc98.org域名下
         if (urlObj["host"] != "www.cc98.org") {
@@ -227,12 +218,12 @@ $cc98 = {
             return "/";
         }
 
-        var params = helper.parseQS(urlObj["query"]);
+        var params = _lib.parseQS(urlObj["query"]);
         var hash = urlObj["hash"] ? ("#" + urlObj["hash"]) : ""
 
         // 不是dispbbs.asp开头的链接，只去掉空的get参数，转为相对链接，不做其他处理
         if (urlObj["path"] === "dispbbs,asp") {
-            return "/" + urlObj["path"] + "?" + helper.toQS(params) + hash;
+            return "/" + urlObj["path"] + "?" + _lib.toQS(params) + hash;
         }
 
         // 如果不是在追踪页面，就去掉replyid
@@ -240,16 +231,16 @@ $cc98 = {
             params["replyid"] = "";
         }
         params["page"] = "";    // 去掉page
-        params["star"] = (params["star"] === "1") ? "" : params["star"];    // star=1时去掉
-        return "/" + urlObj["path"] + "?" + helper.toQS(params) + hash;
+        params["star"] = (params["star"] && params["star"] !== "1") ? params["star"] : "";    // star=1时去掉
+        return "/" + urlObj["path"] + "?" + _lib.toQS(params) + hash;
     }
 };
 
 
 
-// 一些helper函数，跟98无关但方便编程
+// 一些_lib函数，跟98无关但方便编程
 // parseQS, toQS, parseURL, parseCookies, unescapeHTML, ajax
-helper = {
+_lib = {
 
     // parse the url get parameters
     parseQS: function(url) {
@@ -312,13 +303,10 @@ helper = {
     },
 
     // 将部分常见的转义后的html转回来
-    unescapeHTML: function(htmlText) {
-        return htmlText
-            .replace(/&amp;/g, "&")
-            .replace(/&quot;/g, "\"")
-            .replace(/&lt;/g, "<")
-            .replace(/&gt;/g, ">")
-            .replace(/&nbsp;/g, " ");
+    unescapeHTML: function(input) {
+        var e = document.createElement('div');
+        e.innerHTML = input;
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
     },
 
     ajax: function(opts) {
@@ -338,8 +326,25 @@ helper = {
                 opts.success(xhr.responseText);
             }
         };
-        xhr.send(helper.toQS(opts.data));
+        xhr.send(_lib.toQS(opts.data));
     }
 };
+
+_dom = {
+    // xpath query
+    //@return {Array}   返回由符合条件的DOMElement组成的数组
+    xpath: function(expr, contextNode) {
+        contextNode = contextNode || document;
+        var xresult = document.evaluate(expr, contextNode, null,
+                    XPathResult.ORDERED_NODE_ITERATOR_TYPE , null);
+        var xnodes = [];
+        var xres;
+        while (xres = xresult.iterateNext()) {
+            xnodes.push(xres);
+        }
+
+        return xnodes;
+    },
+}
 
 })();
