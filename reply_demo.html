@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>demo</title>
+  <style type="text/css">
+  body {
+    font: 12px/1.4 sans-serif;
+  }
+
+  #replydialog {
+    width: 650px;
+    position: relative;
+    border: 5px solid #ccc;
+    padding: 10px;
+    margin: 0 auto;
+  }
+
+  #replydialog ul{
+    display: block;
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+  }
+
+  .clearfix { clear: both; }
+
+  #reply_header {
+    cursor: move;
+    font-size: 14px;
+    line-height: 20px;
+    margin: 0 0 10px 0;
+    color: #0060A6;
+    float: left;
+  }
+  #dialog_close_btn {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    background: url("http://file.cc98.org/uploadfile/2013/8/7/1954562236.gif");
+    float: right;
+  }
+  #dialog_close_btn:hover {
+    background-position: 0 -20px;
+  }
+
+  #replydialog #subject_line{
+    height: 20px;
+    margin: 10px 0;
+  }
+
+  #post_expression {
+    height: 15px;
+    width: 15px;
+    vertical-align: middle;
+  }
+
+  #post_subject {
+    margin-left: 5px;
+    width: 400px;
+    border: 1px solid #e0e0e0;
+  }
+  #post_subject:focus {
+    outline: 1px solid #4A8CF7;
+  }
+
+  #editor {
+    margin: 0 auto;
+    border: 1px solid #9AC0E6;
+    overflow: auto;
+  }
+
+  #e_control {
+    background-color: #F1F4F8;
+    border-bottom: 1px solid #9AC0E6;
+    padding: 3px 3px 5px 3px;
+  }
+  img.e_ctrl_btn {
+    height: 16px;
+    width: 16px;
+    margin: 0 3px 0 0;
+    border: 0;
+    vertical-align: middle;
+  }
+
+  #replycontent {
+    border: 0;
+    height: 200px;
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+
+    font-size: 12px;
+    overflow: auto;
+    resize: vertical;
+    word-wrap: break-word;
+  }
+  #replycontent:focus {
+    outline: 0px solid #9AC0E6;
+  }
+
+  #e_statusbar {
+    background-color: #f2f2f2;
+    border-top: 1px solid #9AC0E6;
+
+    color: #999;
+    padding: 2px;
+    text-align: right;
+  }
+  #e_save, #e_recover {
+    text-decoration: none;
+    color: #999;
+  }
+  #e_tip {
+    width: 200px;
+    float: left;
+    text-align: left;
+  }
+
+
+  #btn_bar {
+    margin: 10px 0;
+  }
+  #submit_post {
+    height: 20px;
+    width: 75px;
+
+    cursor: pointer;
+    color: #fff;
+    background-color: #6595D6;
+    border: 0px;
+
+    vertical-align: middle;
+  }
+  #submit_status {
+    padding-left: 20px;
+    vertical-align: middle;
+    color: red;
+  }
+
+  </style>
+</head>
+<body>
+<div id="replydialog">
+<form id="replyform">
+<ul id="replytable"width="100%">
+  <li id="dialog_header">
+    <h3 id="reply_header">参与/回复主题</h3>
+    <span><a id="dialog_close_btn" title="关闭"></a></span>
+  </li>
+
+  <li id="subject_line" class="clearfix">
+    <label for="post_subject"><a id="post_expression" href="javascript:void(0);"><img src="http://www.cc98.org/face/face7.gif"></a></label>
+    <input type="text" id="post_subject" name="post_subject">
+  </li>
+
+  <li>
+    <div id="editor">
+      <div id="e_control">
+        <a id="bold" title="加粗" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22333264497.gif"></a>
+        <a id="strikethrough" title="删除线" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22525420119.png"></a>
+        <a id="add_emotions" title="表情" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://www.cc98.org/emot/simpleemot/emot88.gif"></a>
+        <a id="add_upload_file" title="添加附件" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2010/5/4/21521278526.png"></a>
+      </div>
+
+      <textarea id="replycontent" role="textbox" aria-multiline="true"></textarea>
+      
+      <div id="e_statusbar">
+        <span id="e_tip">数据已于 01:47 保存</span>
+        <span id="e_autosavecount">10 秒后保存</span>
+        <a id="e_save" href="javascript:void(0);">保存数据</a>
+        |
+        <a id="e_recover" href="javascript:void(0);">恢复数据</a>
+      </div>
+    </div>
+  </li>
+
+  <table id="btn_bar">
+    <tbody>
+      <tr>
+        <td><input type="button" id="submit_post" name="submit_post" value="提交回复"></td>
+        <td><span id="submit_status">发帖时间限制为10s</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <li class="clearfix"></li>
+
+</ul>
+</form>
+</div>
+
+<script type="text/javascript" src="file:///home/soda/.mozilla/firefox/3cudsl95.default/scriptish_scripts/cc98_reply_suite/1444331657.txt"></script>
+<script type="text/javascript">
+$(function() {
+  function showExpressionList() {
+    if ($('#expression_list').length) return; // 如果页面中已经存在「心情列表」则返回
+
+    $('#subject_line').append('<div id="expression_list"></div>');
+
+    var exprList = $('#expression_list');
+    exprList.css({
+      "position": "fixed",
+      "opacity": 0.8,
+      "background-color": "#fff",
+      "z-index": 100,
+      "margin-top": "-25px",
+    });
+
+    for (var i = 1; i <= 22; ++i) {
+      var img = $('<img src="http://www.cc98.org/face/face' + i + '.gif">');
+      img.css({
+        "cursor": "pointer",
+        "margin": "0 10px 0 0",
+        "border": "0"
+      });
+
+      img.click(function() {
+        $('#post_expression').children().eq(0).attr('src', this.src);
+        $('#expression_list').remove();
+      });
+
+      exprList.append(img);
+    }
+  }
+
+  $('#post_expression').click(showExpressionList);
+
+  $('#dialog_close_btn').click(function() { $('#replydialog').remove(); });
+})
+</script>
+
+</body>
+</html>
