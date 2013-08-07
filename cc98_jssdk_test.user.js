@@ -182,7 +182,7 @@ _cc98 = {
     upload: function(file, callback) {
         var reader = new FileReader();
 
-        var ext = file.name.substring(lastIndexOf(".") + 1);    // 文件扩展名
+        var ext = file.name.substring(file.name.lastIndexOf(".") + 1);    // 文件扩展名
         var boardid = file2boardid[ext] || DEFAULT_UPLOAD_BOARDID;
         var url = "http://www.cc98.org/saveannouce_upfile.asp?boardid=" + boardid;
 
@@ -209,7 +209,7 @@ _cc98 = {
                 "url": url,
                 "contentType": "multipart/form-data; boundary="+boundary,
                 "data": data,
-                "success": calback
+                "success": callback
             })
 
         }
