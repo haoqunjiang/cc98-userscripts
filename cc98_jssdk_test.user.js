@@ -214,7 +214,7 @@ _cc98 = {
 
         }
         reader.readAsBinaryString(file);
-    }
+    },
 
     // 获取页面中的用户列表，回帖时间回帖ID
     // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
