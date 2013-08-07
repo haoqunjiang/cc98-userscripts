@@ -4,9 +4,7 @@
   <meta charset="utf-8">
   <title>demo</title>
   <style type="text/css">
-  body {
-    font: 12px/1.4 sans-serif;
-  }
+  body { font: 12px/1.4 sans-serif; }
 
   #replydialog {
     width: 650px;
@@ -60,9 +58,7 @@
     width: 400px;
     border: 1px solid #e0e0e0;
   }
-  #post_subject:focus {
-    outline: 1px solid #4A8CF7;
-  }
+  #post_subject:focus { outline: 1px solid #4A8CF7; }
 
   #editor {
     margin: 0 auto;
@@ -97,9 +93,7 @@
     resize: vertical;
     word-wrap: break-word;
   }
-  #replycontent:focus {
-    outline: 0px solid #9AC0E6;
-  }
+  #replycontent:focus { outline: 0px solid #9AC0E6; }
 
   #e_statusbar {
     background-color: #f2f2f2;
@@ -200,8 +194,8 @@ $(function() {
 
     $('#subject_line').append('<div id="expression_list"></div>');
 
-    var exprList = $('#expression_list');
-    exprList.css({
+    var expressionList = $('#expression_list');
+    expressionList.css({
       "position": "fixed",
       "opacity": 0.8,
       "background-color": "#fff",
@@ -222,7 +216,7 @@ $(function() {
         $('#expression_list').remove();
       });
 
-      exprList.append(img);
+      expressionList.append(img);
     }
   }
 
