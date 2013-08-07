@@ -29,13 +29,48 @@ var REPLY_URL = "http://www.cc98.org/SaveReAnnounce.asp?method=Topic";
 var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?";
 
 var POST_COUNT_RE = /本主题贴数\s*<b>(\d+)<\/b>/ig;
+
 var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
 var ANNOUNCEID_RE = /<a name="(\d{2,})">/g; // 注意网页上<a name="1">之类的标签是作为#0的anchor出现的
-
-// 还未考虑被删除的帖子
-var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止/ig;
-var REPLYVIEW_RE = /<hr noshade size=1>.*<hr noshade size=1>/ig;
 var POST_TIME_RE = /<\/a>\s*([^AP]*[AP]M)\s*<\/td>/g;
+var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止|>DisplayDel()/ig;
+
+var REPLYVIEW_RE = /<hr noshade size=1>.*<hr noshade size=1>/ig;
+
+// 默认文件上传到的版面
+// 论坛帮助
+// 默认允许 gif|docx|xlsx|pptx|pdf|xap|jpg|jpeg|png|bmp|rar|txt|zip|mid|rm|doc|mp3
+var DEFAULT_UPLOAD_BOARDID = 184;
+
+// 文件扩展名与允许上传的boardid的对应列表
+var file2boardid = {
+    "ipa": 598, // iOS
+    "ppt": 598,
+    "xls": 598,
+    "chm": 598,
+    "wma": 169, // 摇滚和独立音乐
+    "lrc": 169,
+    "asf": 169,
+    "flv": 169,
+    "wmv": 169,
+    "rmvb": 169,
+    "mpg": 169,
+    "avi": 169,
+    "swf": 170, // 史海拾贝
+    "rep": 200, // 星际专区
+    "tar": 212, // Linux天地
+    "gz": 212,
+    "bz2": 212,
+    "tbz": 212,
+    "tgz": 212,
+    "psd": 239, // 贴图工坊
+    "gtp": 308, // 乱弹吉他
+    "gp3": 308,
+    "gp4": 308,
+    "gp5": 308,
+    "torrent": 499, // 多媒体技术
+    "srt": 499
+};
 
 // 98相关的函数接口
 // fami, reply, sendPM, parseTopicPage, postCount, pageCount, getPostContent, formatURL
@@ -91,9 +126,9 @@ _cc98 = {
     // @param {function(text)} [opts.callback=function(){}] 回调函数
     reply: function(opts) {
         var params = _lib.parseQS(opts["url"]);
-        var postURL = REPLY_URL + "&boardID=" + params["boardid"];
+        var postURL = REPLY_URL + "&boardid=" + params["boardid"];
         if (opts["edit"]) {
-            postURL = EDIT_URL + "boardID=" + params["boardid"] + "&replyID=" + opts["replyid"] + "&id=" + params["id"];
+            postURL = EDIT_URL + "boardid=" + params["boardid"] + "&replyid=" + opts["replyid"] + "&id=" + params["id"];
         }
 
         var data = {
@@ -144,6 +179,43 @@ _cc98 = {
         });
     },
 
+    upload: function(file, callback) {
+        var reader = new FileReader();
+
+        var ext = file.name.substring(lastIndexOf(".") + 1);    // 文件扩展名
+        var boardid = file2boardid[ext] || DEFAULT_UPLOAD_BOARDID;
+        var url = "http://www.cc98.org/saveannouce_upfile.asp?boardid=" + boardid;
+
+        reader.onload = function(e)
+        {
+            var boundary = "----------------";
+            boundary += parseInt(Math.random()*98989898+1);
+            boundary += parseInt(Math.random()*98989898+1);
+
+            var data = [boundary,"\r\n",
+                "Content-Disposition: form-data; name=\"act\"\r\n\r\nupload",
+                "\r\n",boundary,"\r\n",
+                "Content-Disposition: form-data; name=\"fname\"\r\n\r\n",file.name,
+                "\r\n",boundary,"\r\n",
+                "Content-Disposition: form-data; name=\"file1\"; filename=\"",file.name,"\"\r\n",
+                "Content-Type: ",file.type,"\r\n\r\n",
+                e.target.result,
+                "\r\n",boundary,"\r\n",
+                "Content-Disposition: form-data; name=\"Submit\"\r\n\r\n\xc9\xcf\xb4\xab",  // 上传
+                "\r\n",boundary,"--\r\n"].join("");
+
+            _lib.ajax({
+                "type": "POST",
+                "url": url,
+                "contentType": "multipart/form-data; boundary="+boundary,
+                "data": data,
+                "success": calback
+            })
+
+        }
+        reader.readAsBinaryString(file);
+    }
+
     // 获取页面中的用户列表，回帖时间回帖ID
     // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
     parseTopicPage: function(htmlText) {
@@ -188,6 +260,7 @@ _cc98 = {
     // 使用一个sync的ajax请求获取rawhtml再解析
     getPostContent: function(url, storey) {
         var result;
+        POST_RE.lastIndex = 0;  // reinitialize the regexp
         _lib.ajax({
             "type": "GET",
             "url": url,
@@ -326,7 +399,11 @@ _lib = {
                 opts.success(xhr.responseText);
             }
         };
-        xhr.send(_lib.toQS(opts.data));
+        if (opts.contentType === "application/x-www-form-urlencoded; charset=UTF-8") {
+            xhr.send(_lib.toQS(opts.data));
+        } else {
+            xhr.send(opts.data)
+        }
     }
 };
 
@@ -346,5 +423,6 @@ _dom = {
         return xnodes;
     },
 }
+
 
 })();
