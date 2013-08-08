@@ -7,6 +7,7 @@
   body { font: 12px/1.4 sans-serif; }
 
   #replydialog {
+    font: 12px/1.4 ubuntu, "Lucida Grande", "Hiragino Sans GB W3", "Microsoft Yahei", sans-serif;
     width: 650px;
     position: relative;
     border: 5px solid #ccc;
@@ -23,22 +24,22 @@
 
   .clearfix { clear: both; }
 
-  #reply_header {
+  .box_title {
     cursor: move;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 20px;
-    margin: 0 0 10px 0;
+    margin: 0 0 20px 0;
     color: #0060A6;
-    float: left;
+    text-align: left;
   }
-  #dialog_close_btn {
+  .close_btn {
+    cursor: pointer;
     width: 20px;
     height: 20px;
-    cursor: pointer;
     background: url("http://file.cc98.org/uploadfile/2013/8/7/1954562236.gif");
     float: right;
   }
-  #dialog_close_btn:hover { background-position: 0 -20px; }
+  .close_btn:hover { background-position: 0 -20px; }
 
   #replydialog #subject_line{
     height: 20px;
@@ -63,6 +64,8 @@
   }
 
   #e_control {
+    color: grey;
+
     background-color: #F1F4F8;
     border-bottom: 1px solid #9AC0E6;
     padding: 3px 3px 5px 3px;
@@ -74,6 +77,10 @@
     border: 0;
     vertical-align: middle;
   }
+  #add_attachments {
+    color: grey;
+    text-decoration: none;
+  }
 
   #replycontent {
     border: 0;
@@ -84,7 +91,7 @@
     -moz-box-sizing: border-box;
     -webkit-box-sizing: border-box;
 
-    font-size: 12px;
+    font: inherit;
     overflow: auto;
     resize: vertical;
     word-wrap: break-word;
@@ -95,13 +102,13 @@
     background-color: #f2f2f2;
     border-top: 1px solid #9AC0E6;
 
-    color: #999;
+    color: grey;
     padding: 2px;
     text-align: right;
   }
   #e_save, #e_recover {
     text-decoration: none;
-    color: #999;
+    color: grey;
   }
   #e_tip {
     width: 200px;
@@ -110,24 +117,75 @@
   }
 
 
-  #btn_bar { margin: 10px 0; }
-  #submit_post {
+  /* 一个对话框中的（末行）按钮区 */
+  .btn_bar {
+    margin: 10px 0 0 0;
+    width: 100%;
+  }
+  /* 标准按钮样式 */
+  .soda_button {
     height: 20px;
     width: 75px;
+    border: 0;
 
     cursor: pointer;
+    font: inherit;
     color: #fff;
     background-color: #6595D6;
-    border: 0px;
-
-    vertical-align: middle;
+    padding: 0 0 1px; /* 用baseliner测试了一下，这样内部文字是居中的，不过我也不清楚为什么是这个数 */
   }
-  #submit_status {
+  #submitting_status {
     padding-left: 20px;
     vertical-align: middle;
+    text-align: left;
     color: red;
   }
 
+
+  #attach_table {
+    position:relative;
+    height:50px;
+    width: 100%;
+    margin-top: 10px;
+
+    padding: 2px;
+    border-collapse: collapse;
+    overflow: visible;
+    text-align: left;
+  }
+  #attach_table th, #attach_table td { border: 1px solid #fff;}
+  #attach_table > thead {
+    color: #fff;
+    background-color: #6595D6;
+  }
+  #attach_list > *:nth-child(even) { background-color:#ddd; }
+  #attach_list > *:nth-child(odd) { background-color:#eee; }
+
+  .filename { color: #090; }
+  .uploadfail { color:#900; }
+  .uploadsuccess { color:#090; }
+
+  #upload_panel {
+    position: fixed;
+
+    border: 5px solid #ccc;
+    margin: 0 auto;
+    padding: 8px;
+
+    background-color: #fff;
+    opacity: 0.8;
+    z-index: 200;
+  }
+  /* 垂直居中显示checkbox */
+  #image_autoshow {
+    margin: 0 2px 2px 0;
+    padding: 0;
+    vertical-align: middle;
+  }
+  /* 上传面板的留白要比回复面板的留白稍小，故margin要覆盖定义 */
+  #upload_title { margin: 0 0 15px 0; }
+  /* 这个只是用来保证各浏览器的上传按钮宽度一样 */
+  #files { width: 250px; }
   </style>
 </head>
 <body>
@@ -135,8 +193,10 @@
 <form id="replyform">
 <ul id="replytable"width="100%">
   <li id="dialog_header">
-    <h3 id="reply_header">参与/回复主题</h3>
-    <span><a id="dialog_close_btn" title="关闭"></a></span>
+    <h3 id="replybox_title" class="box_title">
+      参与/回复主题
+      <span><a id="dialog_close_btn" class="close_btn" title="关闭"></a></span>
+    </h3>
   </li>
 
   <li id="subject_line" class="clearfix">
@@ -150,7 +210,8 @@
         <a id="bold" title="加粗" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22333264497.gif"></a>
         <a id="strikethrough" title="删除线" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22525420119.png"></a>
         <a id="add_emotions" title="表情" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://www.cc98.org/emot/simpleemot/emot88.gif"></a>
-        <a id="add_upload_file" title="添加附件" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2010/5/4/21521278526.png"></a>
+        |
+        <a id="add_attachments" href="javascript:void(0);">添加附件</a>
       </div>
 
       <textarea id="replycontent" role="textbox" aria-multiline="true"></textarea>
@@ -165,24 +226,91 @@
     </div>
   </li>
 
-  <table id="btn_bar">
-    <tbody>
-      <tr>
-        <td><input type="button" id="submit_post" name="submit_post" value="提交回复"></td>
-        <td><span id="submit_status">发帖时间限制为10s</span></td>
-      </tr>
-    </tbody>
-  </table>
-
-  <li class="clearfix"></li>
+  <li>
+    <table class="btn_bar">
+      <tbody>
+        <tr>
+          <td><input type="button" id="submit_post" name="submit_post" class="soda_button" value="提交回复"></td>
+          <td><span id="submitting_status">论坛限制发帖时间间隔10s，倒计时9s…</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
 
 </ul>
 </form>
+<!--
+<table id="attach_table">
+  <thead>
+    <tr>
+      <th width="50%">文件名</th>
+      <th width="20%">大小</th>
+      <th width="30%">状态</th>
+    </tr>
+  </thead>
+  <tbody id="attach_list">
+    <tr>
+      <td class="filename">周杰倫 - 尋找周杰倫.png</td>
+      <td>746.0kB</td>
+      <td class="uploadsuccess">上传成功</td>
+    </tr>
+    <tr>
+      <td class="filename">A-Lin - 寂寞不痛.jpg</td>
+      <td>244.1kB</td>
+      <td class="uploadfail">上传失败</td>
+    </tr>
+    <tr>
+      <td class="filename">陳綺貞 - 蜉蝣.jpg</td>
+      <td>25.5kB</td>
+      <td>正在上传</td>
+    </tr>
+  </tbody>
+</table>
+-->
 </div>
 
 <script type="text/javascript" src="file:///home/soda/.mozilla/firefox/3cudsl95.default/scriptish_scripts/cc98_reply_suite/1444331657.txt"></script>
 <script type="text/javascript">
 $(function() {
+  // simple jquery draggable div plug-in
+  // from https://reader-download.googlecode.com/svn/trunk/jquery-draggable/index.html
+  // modified by soda<sodazju@gmail.com>
+  $.fn.drags = function(opt) {
+
+    opt = $.extend({
+      draggable: "",
+      selected: "",
+      cursor: "move",
+      draggableClass: "draggable",
+      preventDefault: true
+    }, opt);
+
+    var $draggable = (opt.draggable === "") ? this : $(document).find(opt.draggable); // the one to be dragged
+    var $selected = (opt.selected === "") ? this : $(document).find(opt.selected); // the one to be selected
+
+    $draggable.addClass(opt.draggableClass);
+    $selected.css('cursor', opt.cursor);
+
+    $selected.on("mousedown", function(e) {
+      var pos_y = $draggable.offset().top - e.pageY;
+      var pos_x = $draggable.offset().left - e.pageX;
+
+      $(document).on("mousemove", function(e) {
+        $draggable.offset({
+          top: e.pageY + pos_y,
+          left: e.pageX + pos_x
+        });
+      }).on("mouseup", function() {
+        $(this).off("mousemove"); // Unbind events from document
+      });
+      if (opt.preventDefault) {
+        e.preventDefault(); // disable selection
+      }
+    });
+
+    return this;
+  }
+
   function showExpressionList() {
     if ($('#expression_list').length) return; // 如果页面中已经存在「心情列表」则返回
 
@@ -191,10 +319,10 @@ $(function() {
     var expressionList = $('#expression_list');
     expressionList.css({
       "position": "fixed",
-      "opacity": 0.8,
       "background-color": "#fff",
       "z-index": 100,
       "margin-top": "-25px",
+      "margin-left": "-1px"
     });
 
     for (var i = 1; i <= 22; ++i) {
@@ -214,9 +342,64 @@ $(function() {
     }
   }
 
+  function addUBBCode(key) {
+    var elem = document.getElementById('replycontent');
+    var start = elem.selectionStart;
+    var end = elem.selectionEnd;
+    var open_tag = '[' + key + ']';
+    var close_tag = '[/' + key + ']';
+    var sel_txt = elem.value.substring(start,end);
+    var replace = open_tag + sel_txt + close_tag;
+
+    elem.value = elem.value.substring(0,start) + replace + elem.value.substring(end);
+
+    elem.focus();
+    elem.selectionStart = elem.selectionEnd = start + open_tag.length + sel_txt.length;
+  }
+
+  function showEmotions(){}
+
+  var upload_panel_html =
+'<div id="upload_panel">' +
+  '<h3 id="upload_title" class="box_title">' +
+    '添加附件' +
+    '<span><a id="upload_close_btn" class="close_btn" title="关闭"></a></span>' +
+  '</h3>' +
+  '<input type="file" id="files" name="files[]" multiple>' +
+  '<br>' +
+  '<table class="btn_bar" width="100%">' +
+    '<tbody>' +
+      '<tr>' +
+        '<td><input type="checkbox" id="image_autoshow" name="image_autoshow" value="autoshow"><label for="image_autoshow">直接显示图片</label></td>' +
+        '<td><input type="button" id="confirm_upload" name="confirm_upload" class="soda_button" value="上传"></td>' +
+      '</tr>' +
+    '</tbody>' +
+  '</table>' +
+'</div>';
+
+  $('#replybox_title').drags({"draggable": "#replydialog"});
+  $('#dialog_close_btn').click(function() { $('#replydialog').remove(); });
+
   $('#post_expression').click(showExpressionList);
 
-  $('#dialog_close_btn').click(function() { $('#replydialog').remove(); });
+  $('#bold').click(function() { addUBBCode('b') });
+  $('#strikethrough').click(function() { addUBBCode('del') });
+
+  $('#add_attachments').click(function() {
+    if ($('#upload_panel').length) return;
+
+    $('body').append(upload_panel_html);  // 这样每次都会新建一个div而不是重复使用之前的那个
+    $('#upload_title').drags({"draggable": "#upload_panel"});
+    $('#upload_close_btn').click(function() { $('#upload_panel').remove(); })
+    var upload_panel = $('#upload_panel');
+    upload_panel.css({
+      "top": ($(window).height() - upload_panel.height()) / 2 + $(document).scrollTop(),
+      "left": ($(window).width() - upload_panel.width()) / 2 + $(document).scrollLeft()
+    })
+  });
+
+  $('#replycontent').click(function() { $('#expression_list').remove(); });
+
 })
 </script>
 
