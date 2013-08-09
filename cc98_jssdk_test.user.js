@@ -409,7 +409,7 @@ _lib = {
         if (opts.contentType === "application/x-www-form-urlencoded; charset=UTF-8") {
             xhr.send(_lib.toQS(opts.data));
         } else {
-            xhr.send(opts.data)
+            xhr.sendAsBinary(opts.data)
         }
     }
 };
