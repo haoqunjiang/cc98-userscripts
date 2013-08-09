@@ -114,7 +114,7 @@ _cc98 = {
     // @param {string}  opts.url 帖子地址
     // @param {string}  opts.expression 发帖心情
     // @param {string}  opts.content 回帖内容
-    // @param {string}  opts.password md5加密后的密码（可以从cookie中获取）
+    // @param {string}  [opts.password] md5加密后的密码（可以从cookie中获取）
     // @param {string}  [opts.username] 用户名
     // @param {string}  [opts.subject] 发帖主题
     // @param {Number}  [opts.replyid] 引用的帖子的announceid
@@ -129,6 +129,10 @@ _cc98 = {
         var postURL = REPLY_URL + "&boardid=" + params["boardid"];
         if (opts["edit"]) {
             postURL = EDIT_URL + "boardid=" + params["boardid"] + "&replyid=" + opts["replyid"] + "&id=" + params["id"];
+        }
+
+        if (!opts.password) {
+            opts.password = _lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['password'];
         }
 
         var data = {
@@ -219,6 +223,7 @@ _cc98 = {
     // 获取页面中的用户列表，回帖时间回帖ID
     // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
     parseTopicPage: function(htmlText) {
+        if (!htmlText) htmlText = document.body.innerHTML;
         var postList = [];
         
         var nameArr = htmlText.match(NAME_RE);
@@ -247,10 +252,12 @@ _cc98 = {
     },
 
     postCount: function(htmlText) {
+        if (!htmlText) htmlText = document.body.innerHTML;
         return parseInt(htmlText.match(POST_COUNT_RE)[0].replace(POST_COUNT_RE, "$1"));
     },
 
     pageCount: function(htmlText) {
+        if (!htmlText) htmlText = document.body.innerHTML;
         return Math.ceil(_cc98.postCount(htmlText) / 10);
     },
 
@@ -422,6 +429,15 @@ _dom = {
 
         return xnodes;
     },
+    // 添加CSS
+    addStyles: function(css) {
+        var head = document.getElementsByTagName("head")[0];
+        var style = document.createElement("style");
+
+        style.setAttribute("type", "text/css");
+        style.innerHTML = css;
+        head.appendChild(style);
+    }
 }
 
 
