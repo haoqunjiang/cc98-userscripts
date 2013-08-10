@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.1
+// @version        0.1.1
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -497,8 +497,9 @@ var INITIAL_CONFIG = {
     replyTail: ""                   // 小尾巴
 };
 
-var config;
+var config = INITIAL_CONFIG;
 
+/*
 function loadConfig() {
     config = JSON.parse(localStorage.getItem('reply_config'));
     if (!config) {
@@ -512,7 +513,7 @@ function storeConfig() {
 }
 
 loadConfig();
-
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 // 以下是界面无关的代码
@@ -994,16 +995,9 @@ function shortcutHandlers(evt) {
         submit();
     }
 
-    // ALT + 0-9 快速引用
-    if (evt.ctrlKey && evt.keyCode >= 48 && evt.keyCode <= 57) {
-
+    // CTRL + SHIFT + 0-9 快速引用
+    if (evt.ctrlKey && evt.shiftKey && evt.keyCode >= 48 && evt.keyCode <= 57) {
         addFastQuote(location.href, evt.keyCode-48);
-
-        // 阻止默认快捷键
-        evt.preventDefault();
-        evt.stopPropagation();
-        evt.ctrlKey = false;
-        evt.keyCode = 0;
     }
 }
 
