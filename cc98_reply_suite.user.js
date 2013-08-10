@@ -6,35 +6,493 @@
 // @author         soda <sodazju@gmail.com>
 // @description    
 // @include        http://www.cc98.org/dispbbs.asp*
-// @include        http://www.cc98.org/reannounce.asp*
-// @include        http://www.cc98,org/editannounce.asp*
 // @require        http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js
-// @require        https://raw.github.com/sodatea/cc98-userscripts/master/cc98_jssdk_test.user.js
 // @run-at         document-end
 // ==/UserScript==
 
+// 注意，查看原帖的链接默认在新选项卡打开
+
+// 功能：快速回复、快速引用、10s后自动读秒回复、多重引用、查看原帖、默认回复、小尾巴、自动保存草稿、@用户、多文件上传、相对链接、简单的UBB编辑器、自定义表情
+
 // todo:
-// 查看原帖
-// 未来考虑整合马甲切换器，实现马甲发贴功能
-// 发贴的时候因为不知道贴子地址，所以这些功能暂时都没有加进去
-// 以后各个功能单独分离出来后可能考虑@include announce.asp
+// 多重引用
+// @
+// 表情
+// 提示输入内容的最大长度
 
+// 来自JavaScript SDK的全局变量
+var _cc98, _lib, _dom;
 
+// 自己写的cc98 JavaScript SDK
+// _cc98对象中是各种98相关的函数，比如发米、回帖、站短、解析页面等
+// _lib对象是各种辅助函数，比如querystring相关函数，ajax函数等
+// _dom对象是DOM相关操作，比如xpath等
 (function() {
+
+var FAMI_URL = "http://www.cc98.org/master_users.asp?action=award";
+var PM_URL = "http://www.cc98.org/messanger.asp?action=send";
+var REPLY_URL = "http://www.cc98.org/SaveReAnnounce.asp?method=Topic";
+var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?";
+
+var POST_COUNT_RE = /本主题贴数\s*<b>(\d+)<\/b>/ig;
+
+// 以下三个没有考虑被删除的帖子，因为在当前页解析的时候DisplayDel()和正常的发帖时间之类的会一起出现，导致匹配会乱掉
+// 因此引起的发米机发米楼层可能不精确的问题也没办法了……
+var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
+var ANNOUNCEID_RE = /<a name="(\d{2,})">/g; // 注意网页上<a name="1">之类的标签是作为#0的anchor出现的
+var POST_TIME_RE = /<\/a>\s*([^AP]*[AP]M)\s*<\/td>/g;
+
+var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止|>DisplayDel()/ig;
+
+// 用于在getPostContent()函数中去掉回复可见的内容
+var REPLYVIEW_RE = /<hr noshade size=1>.*<hr noshade size=1>/ig;
+
+// 默认文件上传到的版面：论坛帮助
+// 允许 gif|docx|xlsx|pptx|pdf|xap|jpg|jpeg|png|bmp|rar|txt|zip|mid|rm|doc|mp3
+var DEFAULT_UPLOAD_BOARDID = 184;
+
+// 其他文件扩展名与允许上传的boardid的对应列表
+var file2boardid = {
+    "ipa": 598, // iOS
+    "ppt": 598,
+    "xls": 598,
+    "chm": 598,
+    "wma": 169, // 摇滚和独立音乐
+    "lrc": 169,
+    "asf": 169,
+    "flv": 169,
+    "wmv": 169,
+    "rmvb": 169,
+    "mpg": 169,
+    "avi": 169,
+    "swf": 170, // 史海拾贝
+    "rep": 200, // 星际专区
+    "tar": 212, // Linux天地
+    "gz": 212,
+    "bz2": 212,
+    "tbz": 212,
+    "tgz": 212,
+    "psd": 239, // 贴图工坊
+    "gtp": 308, // 乱弹吉他
+    "gp3": 308,
+    "gp4": 308,
+    "gp5": 308,
+    "torrent": 499, // 多媒体技术
+    "srt": 499
+};
+
+// Chrome 没有sendAsBinary函数，这里是一个实现
+if (!XMLHttpRequest.prototype.sendAsBinary) {
+    XMLHttpRequest.prototype.sendAsBinary = function(datastr) {
+        function byteValue(x) {
+            return x.charCodeAt(0) & 0xff;
+        }
+        var ords = Array.prototype.map.call(datastr, byteValue);
+        var ui8a = new Uint8Array(ords);
+        this.send(ui8a);
+    }
+}
+
+// 98相关的函数接口
+// fami, reply, sendPM, parseTopicPage, postCount, pageCount, getPostContent, formatURL
+_cc98 = {
+
+    // 发米/扣米
+    // @param {string}      opts.url 帖子地址
+    // @param {Number}      opts.announceid 回帖ID
+    // @param {Number}      opts.amount 发米/扣米数量[0-1000]
+    // @param {string}      opts.reason 发米理由
+    // @param {boolean}     opts.ismsg  站短/不站短
+    // @param {boolean}     [opts.awardtype=true] 是否发米
+    // @param {boolean}     [opts.async=true] 是否异步
+    // @param {function(text)} [opts.callback=function(){}] 回调函数，参数为bool类型，表示成功与否
+    fami: function(opts) {
+        opts.callback = opts.callback || (function() {});
+        opts.awardtype = opts.awardtype || (opts.awardtype === undefined);
+
+        var params = _lib.parseQS(opts["url"]);
+        var boardid = params["boardid"];
+        var topicid = params["id"];
+
+        _lib.ajax({
+            "type": "POST",
+            "url": FAMI_URL,
+            "data": {
+                "awardtype": opts["awardtype"] ? 0 : 1,
+                "boardid": boardid,
+                "topicid": topicid,
+                "announceid": opts["announceid"],
+                "doWealth": opts["amount"],
+                "content": opts["reason"],
+                "ismsg": opts["ismsg"] ? "on" : ""
+            },
+            "success": opts["callback"],
+            "async": opts["async"]
+        });
+    },
+
+    // 回帖
+    // @param {string}  opts.url 帖子地址
+    // @param {string}  opts.expression 发帖心情
+    // @param {string}  opts.content 回帖内容
+    // @param {string}  [opts.password] md5加密后的密码（可以从cookie中获取）
+    // @param {string}  [opts.username] 用户名
+    // @param {string}  [opts.subject] 发帖主题
+    // @param {Number}  [opts.replyid] 引用的帖子的announceid
+    // @param {boolean} [opts.edit] 是否是在编辑已发布的帖子（是的话必须提供replyid）
+    // @param {boolean} [opts.sendsms] 站短提示
+    // @param {boolean} [opts.viewerfilter] 使用指定用户可见
+    // @param {string}  [opts.allowedviewers] 可见用户
+    // @param {boolean} [opts.async] 是否异步（默认为真）
+    // @param {function(text)} [opts.callback=function(){}] 回调函数
+    reply: function(opts) {
+        var params = _lib.parseQS(opts["url"]);
+        var postURL = REPLY_URL + "&boardid=" + params["boardid"];
+        if (opts["edit"]) {
+            postURL = EDIT_URL + "boardid=" + params["boardid"] + "&replyid=" + opts["replyid"] + "&id=" + params["id"];
+        }
+
+        if (!opts.password) {
+            opts.password = _lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['password'];
+        }
+
+        var data = {
+                "subject": opts["subject"] || "",
+                "expression": opts["expression"],
+                "content": opts["content"],
+                "followup": opts["edit"] ? params["id"] : (opts["replyid"] || params["id"]),
+                "replyid": opts["replyid"] || params["id"],
+                "sendsms": opts["sendsms"] ? "1" : "0",
+                "rootid": params["id"],
+                "star": params["star"] || "1",
+                "username": opts["username"],
+                "passwd": opts["password"],
+                "signflag": "yes",
+                "enableviewerfilter": opts["viewerfilter"] ? "1" : "",
+            };
+        if (opts["viewerfilter"]) {
+            data["allowedviewers"] = opts["allowedviewers"] || "";
+        }
+
+        _lib.ajax({
+            "type": "POST",
+            "url": postURL,
+            "data": data,
+            "success": opts["callback"],
+            "async": opts["async"],
+            
+        });
+    },
+
+    // 站短
+    // @param {string}  opts.recipient 收件人
+    // @param {string}  opts.subject 站短标题
+    // @param {string}  opts.message 站短内容
+    // @param {boolean} [opts.async] 是否异步
+    // @param {function(text)} [opts.callback=function(){}] 回调函数
+    sendPM: function(opts) {
+        _lib.ajax({
+            "type": "POST",
+            "url": PM_URL,
+            "data": {
+                "touser": opts["recipient"],
+                "title": opts["subject"],
+                "message": opts["message"]
+            },
+            "success": opts["callback"],
+            "async": opts["async"]
+        });
+    },
+
+    upload: function(file, callback) {
+        var reader = new FileReader();
+
+        var ext = file.name.substring(file.name.lastIndexOf(".") + 1);    // 文件扩展名
+        var boardid = file2boardid[ext] || DEFAULT_UPLOAD_BOARDID;
+        var url = "http://www.cc98.org/saveannouce_upfile.asp?boardid=" + boardid;
+
+        reader.onload = function(e)
+        {
+            var boundary = "----------------";
+            boundary += parseInt(Math.random()*98989898+1);
+            boundary += parseInt(Math.random()*98989898+1);
+
+            var data = [boundary,"\r\n",
+                "Content-Disposition: form-data; name=\"act\"\r\n\r\nupload",
+                "\r\n",boundary,"\r\n",
+                "Content-Disposition: form-data; name=\"fname\"\r\n\r\n",file.name,
+                "\r\n",boundary,"\r\n",
+                "Content-Disposition: form-data; name=\"file1\"; filename=\"",file.name,"\"\r\n",
+                "Content-Type: ",file.type,"\r\n\r\n",
+                e.target.result,
+                "\r\n",boundary,"\r\n",
+                "Content-Disposition: form-data; name=\"Submit\"\r\n\r\n\xc9\xcf\xb4\xab",  // 上传
+                "\r\n",boundary,"--\r\n"].join("");
+
+            _lib.ajax({
+                "type": "POST",
+                "url": url,
+                "contentType": "multipart/form-data; boundary="+boundary,
+                "data": data,
+                "success": callback
+            })
+
+        }
+        reader.readAsBinaryString(file);
+    },
+
+    // 获取页面中的用户列表，回帖时间回帖ID
+    // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
+    parseTopicPage: function(htmlText) {
+        if (!htmlText) htmlText = document.body.innerHTML;
+        var postList = [];
+        
+        var nameArr = htmlText.match(NAME_RE);
+        nameArr.forEach(function(name, index, arr) {
+            var post = {};
+            post["username"] = name.replace(NAME_RE, "$1");
+            postList.push(post);
+        });
+
+        var idArr = htmlText.match(ANNOUNCEID_RE);
+        // 考虑到心灵没有announceid，所以idArr可能为空
+        if (idArr) {
+            idArr.forEach(function(id, index, arr) {
+                postList[index]["announceid"] = id.replace(ANNOUNCEID_RE, "$1");
+            });
+        }
+
+        var timeArr = htmlText.match(POST_TIME_RE);
+        if (timeArr) {
+            timeArr.forEach(function(t, index, arr) {
+                postList[index]["posttime"] = t.replace(POST_TIME_RE, "$1");
+            })
+        }
+
+        return postList;
+    },
+
+    postCount: function(htmlText) {
+        if (!htmlText) htmlText = document.body.innerHTML;
+        return parseInt(htmlText.match(POST_COUNT_RE)[0].replace(POST_COUNT_RE, "$1"));
+    },
+
+    pageCount: function(htmlText) {
+        if (!htmlText) htmlText = document.body.innerHTML;
+        return Math.ceil(_cc98.postCount(htmlText) / 10);
+    },
+
+    // 回帖内容如果要从html转成ubb的话太麻烦
+    // 但是没有执行js的rawhtml里有包含ubb代码
+    // 所以为了方便起见，把获取帖子内容的功能独立出来
+    // 使用一个sync的ajax请求获取rawhtml再解析
+    getPostContent: function(url, storey) {
+        var result;
+        POST_RE.lastIndex = 0;  // reinitialize the regexp
+        _lib.ajax({
+            "type": "GET",
+            "url": url,
+            "success": function(rawhtml) {
+                for (var i = 0; i != storey-1; ++i)
+                    POST_RE.exec(rawhtml)
+                result = POST_RE.exec(rawhtml)[1] || "";
+                result = result
+                    .replace(REPLYVIEW_RE, "")
+                    .replace(/<br>/ig, "\n");
+            },
+            "async": false
+        });
+        return _lib.unescapeHTML(result);
+    },
+
+    // 格式化网址，去除无用的参数并转为相对链接
+    // @param {string}  url 要格式化的网址
+    // @param {boolean} maxPageFix 是否修正url中star参数的值，使其不超过当前最后页的实际值
+    formatURL: function(url, maxPageFix) {
+        var urlObj = _lib.parseURL(url);
+
+        // 不在www.cc98.org域名下
+        if (urlObj["host"] != "www.cc98.org") {
+            return url;
+        }
+
+        // http://www.cc98.org/
+        if (!urlObj["path"]) {
+            return "/";
+        }
+
+        var params = _lib.parseQS(urlObj["query"]);
+        var hash = urlObj["hash"] ? ("#" + urlObj["hash"]) : ""
+
+        // 不是dispbbs.asp开头的链接，只去掉空的get参数，转为相对链接，不做其他处理
+        if (urlObj["path"] === "dispbbs,asp") {
+            return "/" + urlObj["path"] + "?" + _lib.toQS(params) + hash;
+        }
+
+        // 如果不是在追踪页面，就去掉replyid
+        if (!params["trace"]) {
+            params["replyid"] = "";
+        }
+        params["page"] = "";    // 去掉page
+
+        // 
+        if (params["star"] && maxPageFix && parseInt(params["star"]) > _cc98.pageCount()) {
+            params["star"] = _cc98.pageCount()
+        }
+
+        params["star"] = (params["star"] && params["star"] !== "1") ? params["star"] : "";    // star=1时去掉
+        return "/" + urlObj["path"] + "?" + _lib.toQS(params) + hash;
+    }
+};
+
+
+
+// 一些_lib函数，跟98无关但方便编程
+// parseQS, toQS, parseURL, parseCookies, unescapeHTML, ajax
+_lib = {
+
+    // parse the url get parameters
+    parseQS: function(url) {
+        url = url.toLowerCase().split("#")[0];  // remove the hash part
+        var t = url.indexOf("?");
+        var hash = {};
+        if (t >= 0) {
+            var params = url.substring(t+1).split("&");
+        } else {    // plain query string without "?" (e.g. in cookies)
+            var params = url.split("&");
+        }
+        for (var i = 0; i < params.length; ++i) {
+            var val = params[i].split("=");
+            hash[decodeURIComponent(val[0])] = decodeURIComponent(val[1]);
+        }
+        return hash;
+    },
+
+    toQS: function(obj) {
+        var ret = [];
+        for (var key in obj) {
+            if ("" === key) continue;
+            if ("" === obj[key]) continue;
+            ret.push(encodeURIComponent(key) + "=" + encodeURIComponent(obj[key]));
+        }
+        return ret.join("&");
+    },
+
+    parseURL: function(url) {
+        // from JavaScript: The Good Parts
+        var parse_url = /^(?:([A-Za-z]+):)?(\/{0,3})([0-9.\-A-Za-z]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?([^#]*))?(?:#(.*))?$/
+        var arr = parse_url.exec(url);
+        var result = {};
+        result["url"] = arr[0];
+        result["scheme"] = arr[1];
+        result["slash"] = arr[2];
+        result["host"] = arr[3];
+        result["port"] = arr[4];
+        result["path"] = arr[5];
+        result["query"] = arr[6];
+        result["hash"] = arr[7];
+        return result;
+    },
+
+    parseCookies: function(theCookie) {
+        var cookies = {};           // The object we will return
+        var all = theCookie;        // Get all cookies in one big string
+        if (all === "")             // If the property is the empty string
+            return cookies;         // return an empty object
+        var list = all.split("; "); // Split into individual name=value pairs
+        for(var i = 0; i < list.length; i++) {  // For each cookie
+            var cookie = list[i];
+            var p = cookie.indexOf("=");        // Find the first = sign
+            var name = cookie.substring(0,p);   // Get cookie name
+            var value = cookie.substring(p+1);  // Get cookie value
+            value = decodeURIComponent(value);  // Decode the value
+            cookies[name] = value;              // Store name and value in object
+        }
+        return cookies;
+    },
+
+    // 将部分常见的转义后的html转回来
+    unescapeHTML: function(input) {
+        var e = document.createElement('div');
+        e.innerHTML = input;
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    },
+
+    ajax: function(opts) {
+        opts = {
+            type: opts.type || "GET",
+            url: opts.url || "",
+            data: opts.data || null,
+            contentType: opts.contentType || "application/x-www-form-urlencoded; charset=UTF-8",
+            success: opts.success || function() {},
+            async: opts.async || (opts.async === undefined)
+        };
+
+        var xhr = new XMLHttpRequest;
+        xhr.open(opts.type, opts.url, opts.async);
+        xhr.setRequestHeader("Content-type", opts.contentType);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                opts.success(xhr.responseText);
+            }
+        };
+        if (opts.contentType === "application/x-www-form-urlencoded; charset=UTF-8") {
+            xhr.send(_lib.toQS(opts.data));
+        } else {
+            xhr.sendAsBinary(opts.data)
+        }
+    }
+};
+
+_dom = {
+    // xpath query
+    //@return {Array}   返回由符合条件的DOMElement组成的数组
+    xpath: function(expr, contextNode) {
+        contextNode = contextNode || document;
+        var xresult = document.evaluate(expr, contextNode, null,
+                    XPathResult.ORDERED_NODE_ITERATOR_TYPE , null);
+        var xnodes = [];
+        var xres;
+        while (xres = xresult.iterateNext()) {
+            xnodes.push(xres);
+        }
+
+        return xnodes;
+    },
+    // 添加CSS
+    addStyles: function(css) {
+        var head = document.getElementsByTagName("head")[0];
+        var style = document.createElement("style");
+
+        style.setAttribute("type", "text/css");
+        style.innerHTML = css;
+        head.appendChild(style);
+    }
+}
+
+})();
+
+
+// 实际代码
+$(function() {
+
 var maxTextareaLength = 16240;       // 文本框的最大输入长度(字节数)
 var maxSubjectLength = 100;          // 主题框的最大输入长度(字节数)
 
-var INITIAL_CONFIG = {
-    autoReply: true,                // 10秒错误后自动读秒回复
-    enableMultiquote: false,        // 默认不多重引用
-    useRelativeURL: true,           // 使用相对链接
-    viewOriginalPost: true,         // 在引用中加入"查看原帖"
-    blockQuotedEmotions: false,     // 是否屏蔽引用里的表情和图片
 
-    autoSaveInterval: 1,            // 自动保存间隔(分钟)
-    expireTime: 30,                 // 帖子内容过期时间(分钟)
+////////////////////////////////////////////////////////////////////////////////
+// 配置相关
+////////////////////////////////////////////////////////////////////////////////
+var INITIAL_CONFIG = {
+    version: 0.1,                   // 脚本的版本号，便于后续升级时对配置做更改
+
+    viewOriginalPost: true,         // 在引用中加入"查看原帖"
     rtString: '➤➤➤➤➤',          // 原帖链接的提示文字
     rtColor: 'seagreen',            //「查看原帖」的颜色
+    //blockQuotedEmotions: false,   // 是否屏蔽引用里的表情和图片（暂未实现）
+
+    autoSaveInterval: 30,           // 自动保存间隔(秒)，必须是10的倍数
+    useRelativeURL: true,           // 使用相对链接
     defaultReplyContent: '\n',      // 文本框为空时的默认回复内容
     replyTail: ""                   // 小尾巴
 };
@@ -55,7 +513,18 @@ function storeConfig() {
 
 loadConfig();
 
-// 以下都是跟界面有关的函数
+
+////////////////////////////////////////////////////////////////////////////////
+// 以下是界面无关的代码
+////////////////////////////////////////////////////////////////////////////////
+
+// unique id generator
+var uid = function() {
+    var id = 0;
+    return function() {
+        return id++;
+    }
+}();
 
 // simple jquery draggable div plug-in
 // from https://reader-download.googlecode.com/svn/trunk/jquery-draggable/index.html
@@ -96,6 +565,18 @@ $.fn.drags = function(opt) {
     return this;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// 以下都是跟界面有关的函数
+////////////////////////////////////////////////////////////////////////////////
+
+// 显示发帖状态（成功、失败、10s等）
+function showStatus(status, color) {
+    $('#submitting_status').text(status);
+    if (color) $('#submitting_status').css('color', color);
+}
+
+// 显示发帖心情
 function showExpressionList() {
     if ($('#expression_list').length) return; // 如果页面中已经存在「心情列表」则返回
 
@@ -127,6 +608,7 @@ function showExpressionList() {
     }
 }
 
+// 添加UBB代码
 function addUBBCode(key) {
     var elem = document.getElementById('post_content');
     var start = elem.selectionStart;
@@ -142,16 +624,10 @@ function addUBBCode(key) {
     elem.selectionStart = elem.selectionEnd = start + open_tag.length + sel_txt.length;
 }
 
+// 显示表情列表（待完成）
 function showEmotions() {}
 
-// unique id generator
-var uid = function() {
-    var id = 0;
-    return function() {
-        return id++;
-    }
-}();
-
+// 上传文件
 function uploadFiles() {
     var files = document.getElementById('files').files;
 
@@ -183,7 +659,7 @@ function uploadFiles() {
 
         // jQuery和原生JS夹杂的风格很不喜欢，不过没办法了
         // 采用闭包的原因是为了防止for循环结束后，上层函数（uploadFile）里各个变量都固定为最后一个
-        _cc98.upload(f, function(file_id, image_autoshow) {
+        var callback = function(file_id, image_autoshow) {
             return function(html) {
                 var file = $('#' + file_id);
 
@@ -220,35 +696,48 @@ function uploadFiles() {
                     file.next().next().addClass('uploadfail').text('上传失败');
                 }
             }
-        }(name.id, $('#image_autoshow').prop('checked')));
+        }(name.id, $('#image_autoshow').prop('checked'));
+
+        _cc98.upload(f, callback);
     }
 
     // 关闭上传面板
     $('#upload_panel').remove();
 }
 
+// 保存草稿
+function saveDraft() {
+    sessionStorage.setItem('cc98_editor_content', $('#post_content').val());
+    var d = new Date();
+    var time = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+    $('#e_tip').text('帖子内容保存于 ' + time);
+}
+
+// 将content中的URL替换为相对链接
 function makeRelativeURL(content) {
     return content.replace(/(?:http:\/\/)?www\.cc98\.org\/[&=#%\w\+\.\?]+/g, function(match, offset, string){
         return '[url]' + _cc98.formatURL(match) + '[/url]';
     });
 }
 
+// at用户并刷新页面（于回复成功后执行）
 function atUsers() {
-    $('#submitting_status').text('发帖成功，正在跳转…');
+    showStatus('发帖成功，正在跳转…');
     location.reload();
 }
 
+// 实际发表回复
 function reply() {
     var expr = $('#post_expression').children().eq(0).attr('src')
     expr = expr.substring(expr.lastIndexOf('/') + 1);
 
     // 考虑到用户可能把默认回复和小尾巴都去掉，所以回复内容仍可能为空
     if ($('#post_content').val() === "") {
-        $('#submitting_status').text('帖子内容不能为空');
+        showStatus('帖子内容不能为空');
         return;
     }
 
-    $('#submitting_status').text('发表帖子中…');
+    showStatus('发表帖子中…');
 
     _cc98.reply({
         "url": window.location.href,
@@ -261,21 +750,23 @@ function reply() {
                 atUsers();
             } else if (html.indexOf("本论坛限制发贴距离时间为10秒") !== -1) {
                 // 10s倒计时
-                for (var i = 0; i != 10; ++i) {
+                for (var i = 0; i <= 10; ++i) {
                     setTimeout(function(e) {
-                        return function() { $('#submitting_status').text('论坛限制发帖时间间隔10s，倒计时' + (10-e) + 's…'); }
+                        return function() { showStatus('论坛限制发帖时间间隔10s，倒计时' + (10-e) + 's…'); }
                     }(i), i * 1000);
                 }
+
                 // 倒计时结束重新发帖
                 setTimeout(reply, 10000);
             } else {
                 // 未知错误
-                $('#submitting_status').text('未知错误');
+                showStatus('未知错误');
             }
         }
     });
 }
 
+// 提交回复，包括对帖子内容的预处理（加小尾巴等）
 function submit() {
     // 为空则添加默认回复
     if ($('#post_content').val() === '')
@@ -287,12 +778,15 @@ function submit() {
     }
 
     // 相对链接
-    $('#post_content').val(makeRelativeURL($('#post_content').val()));
+    if (config.useRelativeURL) {
+        $('#post_content').val(makeRelativeURL($('#post_content').val()));
+    }
 
     // 提交回复
     reply();
 }
 
+// 显示回复面板，添加与其相关的各种事件绑定
 function showDialog() {
     var reply_dialog_html = 
     '<div id="reply_dialog">' +
@@ -323,9 +817,9 @@ function showDialog() {
     '' +
                 '<div id="e_statusbar">' +
                     '<span id="e_tip"></span>' +
-                    '<span id="e_autosavecount">30 秒后自动保存草稿</span>' +
-                    '<a id="e_save" href="javascript:void(0);">保存数据</a>' +
-                    '|' +
+                    '<span id="e_autosavecount"></span>' +
+                    '<a id="e_save" href="javascript:void(0);">保存草稿</a>' +
+                    ' | ' +
                     '<a id="e_recover" href="javascript:void(0);">恢复数据</a>' +
                 '</div>' +
             '</div>' +
@@ -393,9 +887,14 @@ function showDialog() {
 
     $('#post_expression').click(showExpressionList);
 
+    // UBB编辑器
     $('#bold').click(function() { addUBBCode('b') });
     $('#strikethrough').click(function() { addUBBCode('del') });
 
+    // 表情列表
+    $('#add_emotions').click(showEmotions);
+
+    // 显示上传面板，添加与其相关的事件绑定
     $('#add_attachments').click(function() {
         if ($('#upload_panel').length) return;
 
@@ -411,50 +910,77 @@ function showDialog() {
         $('#confirm_upload').click(uploadFiles);
     });
 
+    // 点击输入框时，隐藏发帖心情列表
     $('#post_content').click(function() { $('#expression_list').remove(); });
 
-    $('#e_save').click(function() { sessionStorage.setItem('cc98_editor_content', $('#post_content').val()); });
+    // 自动保存草稿
+    setInterval(function() {
+        var remained = config.autoSaveInterval;  // 剩余时间
+        return function() {
+            remained -= 10;
+            if (remained === 0) {
+                saveDraft();
+                remained = config.autoSaveInterval;
+            }
+            $('#e_autosavecount').text(remained + ' 秒后自动保存草稿');
+        }
+    }(), 10000);    // 10s更改一次状态
+
+    // 初始状态
+    $('#e_autosavecount').text(config.autoSaveInterval + ' 秒后自动保存草稿');
+    // 保存草稿
+    $('#e_save').click(saveDraft);
+    // 恢复数据
     $('#e_recover').click( function() {
-        if (confirm('此操作将覆盖当前帖子内容，确定要恢复数据吗？')) {
+        if ($('#post_content').val() === '' || confirm('此操作将覆盖当前帖子内容，确定要恢复数据吗？')) {
           $('#post_content').val(sessionStorage.getItem('cc98_editor_content'));
       }
     });
 
+    // 提交
     $('#submit_post').click(submit);
 
-    // 鼠标焦点定到输入框
+
+    // 打开回复时将鼠标焦点定到输入框
     $('#post_content').focus();
 }
 
 
-function addOriginalURL(url, storey, quoteContent) {
+// 给引用加上查看原帖链接
+function addQuoteURL(url, storey, quoteContent) {
     var insertIndex = quoteContent.indexOf('[/b]') + 4;
-    var quoteURL = _cc98.formatURL(url) + '#' + storey;
-    return quoteContent.substring(0, insertIndex) + '  [url=' + quoteURL + ',t=self][color=' + config.rtColor + ']' + config.rtString +
+    var quoteURL = _cc98.formatURL(url, true).split('#')[0] + '#' + storey;
+    return quoteContent.substring(0, insertIndex) + '  [url=' + quoteURL + '][color=' + config.rtColor + ']' + config.rtString +
         '[/color][/url]' + quoteContent.substring(insertIndex);
 }
 
-// 这里的storey是1-9再到0,，不是从0开始的
-function addQuoteContent(url, storey) {
-  replyNum = storey + 48;
-  if (document.getElementById("reply"+replyNum)){
-        var replyurl = document.getElementById("reply"+replyNum).value;
-        $.ajax({
-            "url": replyurl,
-            "success": function(html) {
-                var quoteContent = (/<textarea.*>([\s\S]*)<\/textarea>/ig).exec(html)[1];
-                quoteContent = addOriginalURL(url, storey, quoteContent);
+// 添加回复内容（这里的storey是1-9再到0,，不是从0开始的）
+function addFastQuote(url, storey) {
+    replyNum = storey + 48;
+    if (!document.getElementById("reply"+replyNum)) return;
 
-                $('#post_content').val( $('#post_content').val() + quoteContent);
+    showDialog();
+
+    var replyurl = document.getElementById("reply"+replyNum).value;
+    $.ajax({
+        "url": replyurl,
+        "success": function(html) {
+            var quoteContent = (/<textarea.*>([\s\S]*)<\/textarea>/ig).exec(html)[1];
+
+            if (config.viewOriginalPost) {
+                quoteContent = addQuoteURL(url, storey, quoteContent);
             }
-        });
-    }
 
+            $('#post_content').val( $('#post_content').val() + quoteContent);
+        }
+    });
 }
 
+
+// 处理各种键盘快捷键
 function shortcutHandlers(evt) {
-    // ALT + R 打开弹出回复框
-    if (evt.altKey && evt.keyCode === 82) {
+    // CTRL + M 打开弹出回复框
+    if (evt.ctrlKey && evt.keyCode === 77) {
         showDialog();
     }
 
@@ -471,8 +997,7 @@ function shortcutHandlers(evt) {
     // ALT + 0-9 快速引用
     if (evt.ctrlKey && evt.keyCode >= 48 && evt.keyCode <= 57) {
 
-        showDialog();
-        addQuoteContent(location.href, evt.keyCode-48);
+        addFastQuote(location.href, evt.keyCode-48);
 
         // 阻止默认快捷键
         evt.preventDefault();
@@ -511,7 +1036,7 @@ _dom.addStyles(
         'font-size: 16px;' +
         'line-height: 20px;' +
         'margin: 0 0 20px 0;' +
-        'color: #0060A6;' +
+        'color: #6595D6;' +
         'text-align: left;' +
     '}' +
     '.close_btn {' +
@@ -590,6 +1115,10 @@ _dom.addStyles(
         'color: grey;' +
         'padding: 2px;' +
         'text-align: right;' +
+    '}' +
+    '#e_autosavecount {' +
+        'display: inline-block;' +
+        'padding-right: 20px;' +
     '}' +
     '#e_save, #e_recover {' +
         'text-decoration: none;' +
@@ -685,33 +1214,30 @@ _dom.addStyles(
         'padding-left: 3px;' +
     '}');
 
-// 给页面加上回复按钮
-$(function() {
-    // 基本界面 & 设置界面
-    function addQuoteBtn() {
-        quoteBtn = $('img[src="pic/reply.gif"]').parent();
-        fastReplyImg = $('<img src="http://file.cc98.org/uploadfile/2013/7/17/2156264601.png">');
-        fastReplyImg.css({
-            "vertical-align": "middle",
-            "margin-left": "5px"
-        })
-        fastReplyBtn = $('<a class="fastreply_btn" href="javascript:void(0);"></a>');
-        fastReplyBtn.append(fastReplyImg);
-
-        quoteBtn.parent().append(fastReplyBtn);
-
-        $(".fastreply_btn").each(function (index, ele) {
-            this.id = 'fastreply_' + index;
-        });
-    }
-
-    addQuoteBtn();
-})
-
 // 绑定快捷键
 $(document).keyup(shortcutHandlers);
 
-})();
-// reply button image: http://file.cc98.org/uploadfile/2013/7/17/2156264601.png
+// 基本界面 & 设置界面
 
-// 帖子内容保存于 01:47
+// 给页面加上引用按钮
+function addQuoteBtn() {
+    var quoteBtn = $('img[src="pic/reply.gif"]').parent();
+    var fastReplyImg = $('<img src="http://file.cc98.org/uploadfile/2013/7/17/2156264601.png">');
+    fastReplyImg.css({
+        "vertical-align": "middle",
+        "margin-left": "5px"
+    })
+    var fastReplyBtn = $('<a class="fastreply_btn" href="javascript:void(0);"></a>');
+    fastReplyBtn.append(fastReplyImg);
+
+    quoteBtn.parent().append(fastReplyBtn);
+
+    $(".fastreply_btn").each(function (index, ele) {
+        var storey = (index === 9) ? 0 : (index + 1);
+        this.id = 'fastreply_' +  storey;
+        $(this).click(function() { addFastQuote(location.href, storey); });
+    });
+}
+
+addQuoteBtn();
+});
