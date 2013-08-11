@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.1.1
+// @version        0.2.0
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -15,14 +15,14 @@
 // 功能：快速回复、快速引用、10s后自动读秒回复、多重引用、查看原帖、默认回复、小尾巴、自动保存草稿、@用户、多文件上传、相对链接、简单的UBB编辑器、自定义表情
 
 // todo:
-// 多重引用
-// @
-// 表情
-// 提示输入内容的最大长度
+// @，提示输入内容的最大长度，自定义表情
 
 // 自己写的cc98 JavaScript SDK
 // _lib对象是各种辅助函数，比如解析querystring，ajax调用，xpath等
 // _cc98对象中是各种98相关的函数，比如发米、回帖、站短、解析页面等
+
+// 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一直╮(╯▽╰)╭）
+// 而index表示楼层的序号，0是第一楼，1是第二楼……
 (function() {
 
 // Chrome 没有sendAsBinary函数，这里是一个实现
@@ -353,16 +353,18 @@ window._cc98 = function() {
     // 回帖内容如果要从html转成ubb的话太麻烦，但是没有执行js的rawhtml里有包含ubb代码
     // 所以为了方便起见，把获取帖子内容的功能独立出来，为它再开一个ajax请求
     // @param {string} url 网址
-    // @param {Number} storey 楼层[1-10]
+    // @param {Number} storey 楼层[1-9,0]
     // @param {function(postContent)) callback 回调函数
     this.getPostContent = function(url, storey, callback) {
-        var result;
+        var index;  // 实际索引
+        index = ((storey-1) >= 0) ? (storey-1) : 10;
         POST_RE.lastIndex = 0;  // reinitialize the regexp
         _lib.ajax({
             'type': 'GET',
             'url': url,
             'success': function(rawhtml) {
-                for (var i = 0; i != storey-1; ++i)
+                var result;
+                for (var i = 0; i != index; ++i)
                     POST_RE.exec(rawhtml)
                     result = POST_RE.exec(rawhtml)[1] || '';
                     result = result
@@ -518,15 +520,15 @@ var uid = function() {
 $.fn.drags = function(opt) {
 
     opt = $.extend({
-        draggable: "",
-        selected: "",
+        selected: "",   // 被鼠标选中的对象（默认为this）
+        draggable: "",  // 被拖动的对象（默认为this）
         cursor: "move",
         draggableClass: "draggable",
         preventDefault: true
     }, opt);
 
-    var $draggable = (opt.draggable === "") ? this : $(document).find(opt.draggable); // the one to be dragged
-    var $selected = (opt.selected === "") ? this : $(document).find(opt.selected); // the one to be selected
+    var $draggable = (opt.draggable === "") ? this : $(document).find(opt.draggable);
+    var $selected = (opt.selected === "") ? this : $(document).find(opt.selected);
 
     $draggable.addClass(opt.draggableClass);
     $selected.css('cursor', opt.cursor);
@@ -573,7 +575,7 @@ function showExpressionList() {
         'position': 'relative',
         'background-color': '#fff',
         'z-index': 100,
-        'margin-top': '-24px',  // 比原表情的位置偏离1px，以覆盖住后面表示被选中的虚线框
+        'margin-top': '-23px',  // 比原表情的位置偏离一点点，以覆盖住后面表示被选中的虚线框
         'margin-left': '-1px'
     });
 
@@ -610,8 +612,36 @@ function addUBBCode(key) {
     elem.selectionStart = elem.selectionEnd = start + open_tag.length + sel_txt.length;
 }
 
+// 往输入框当前光标位置添加内容
+function insertContent(content) {
+    var elem = $('#post_content').get(0);
+    var start = elem.selectionStart;
+    var end = elem.selectionEnd;
+    elem.value = elem.value.substring(0,start) + content + elem.value.substring(end);
+    elem.focus();
+    elem.selectionStart = elem.selectionEnd = start + content.length;
+}
+
 // 显示表情列表（待完成）
-function showEmotions() {}
+function toggleEmotions() {
+    if ($('#emot_panel').length) {
+        $('#emot_panel').remove();
+        return;
+    }
+
+    $('#reply_dialog').append('<div id="emot_panel"></div>');
+
+
+    for (var i = 1; i <= 91; ++i) {
+        var img = $('<img src="http://www.cc98.org/emot/simpleemot/emot' + ((i < 10) ? '0' + i : i) + '.gif">');
+
+        img.click(function() {
+            insertContent(this.src.replace(/.*emot(\d+)\.gif/ig, '[em$1]'));
+        });
+
+        $('#emot_panel').append(img);
+    }
+}
 
 // 上传文件
 function uploadFiles() {
@@ -667,12 +697,7 @@ function uploadFiles() {
                     file.css('cursor', 'pointer');
                     file.click(function(ubb) {
                         return function() {
-                            var elem = $('#post_content').get(0);
-                            var start = elem.selectionStart;
-                            var end = elem.selectionEnd;
-                            elem.value = elem.value.substring(0,start) + ubb + elem.value.substring(end);
-                            elem.focus();
-                            elem.selectionStart = elem.selectionEnd = start + ubb.length;
+                            insertContent(ubb);
                         }
                     }(ubb));
 
@@ -793,9 +818,9 @@ function showDialog() {
         '<li>' +
             '<div id="editor">' +
                 '<div id="e_control">' +
+                    '<a id="add_emotions" title="表情" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://www.cc98.org/emot/simpleemot/emot88.gif"></a>' +
                     '<a id="bold" title="加粗" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22333264497.gif"></a>' +
                     '<a id="strikethrough" title="删除线" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22525420119.png"></a>' +
-                    '<a id="add_emotions" title="表情" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://www.cc98.org/emot/simpleemot/emot88.gif"></a>' +
                     '<a id="add_attachments" href="javascript:void(0);">| 添加附件</a>' +
                 '</div>' +
     '' +
@@ -879,7 +904,7 @@ function showDialog() {
     $('#strikethrough').click(function() { addUBBCode('del') });
 
     // 表情列表
-    $('#add_emotions').click(showEmotions);
+    $('#add_emotions').click(toggleEmotions);
 
     // 显示上传面板，添加与其相关的事件绑定
     $('#add_attachments').click(function() {
@@ -888,10 +913,11 @@ function showDialog() {
         $('body').append(upload_panel_html);  // 这样每次都会新建一个div而不是重复使用之前的那个
         $('#upload_title').drags({'draggable': '#upload_panel'});
         $('#upload_close_btn').click(function() { $('#upload_panel').remove(); })
+        // 居中显示
         var upload_panel = $('#upload_panel');
         upload_panel.css({
-            'top': (document.body.clientHeight - upload_panel.height()) / 2 ,
-            'left': (document.body.clientWidth - upload_panel.width()) / 2
+            'top': (document.body.clientHeight - upload_panel.height()) / 2 + $(window).scrollTop(),
+            'left': (document.body.clientWidth - upload_panel.width()) / 2 + $(window).scrollLeft()
         });
 
         $('#confirm_upload').click(uploadFiles);
@@ -966,6 +992,25 @@ function addFastQuote(url, storey) {
     });
 }
 
+// 多重引用
+function addMultiQuote(url, storey) {
+    showDialog();
+
+    index = ((storey-1) >= 0) ? (storey-1) : 10
+    var post = _cc98.parseTopicPage()[index];
+
+    if (!post) return;
+
+    _cc98.getPostContent(url, storey, function(content) {
+        quoteContent = '[quote][b]以下是引用[i]' + post.username + '在' + post.posttime + '[/i]的发言：[/b]\n' + content + '\n[/quote]\n';
+
+        if (config.viewOriginalPost) {
+                quoteContent = addQuoteURL(url, storey, quoteContent);
+        }
+
+        $('#post_content').val( $('#post_content').val() + quoteContent);
+    });
+}
 
 // 处理各种键盘快捷键
 function shortcutHandlers(evt) {
@@ -1076,6 +1121,29 @@ _lib.addStyles(
         'vertical-align: middle' +
     '}' +
     '' +
+    '#emot_panel {' +
+        'position: absolute;' +
+        'top: 0;' +
+        'right: 680px;' +
+        'width: 270px;  /* (20+3*2+1*2) * 9 + 8 + 5*2 */' +
+        'opacity: 1;' +
+        'background-color: #fff;' +
+        'border: 5px solid transparent;' +
+        'border-radius: 5px;' +
+        'box-shadow: rgaa(0, 0, 0, 0.4) 0 0 18px;' +
+    '}' +
+    '#emot_panel img {' +
+        'cursor: pointer;' +
+        'height: 20px;' +
+        'width: 20px;' +
+        'margin: 1px;' +
+        'padding: 3px;' +
+        'border: 1px solid #ccc;' +
+    '}' +
+    '#emot_panel img:hover {' +
+        'border: 1px solid #f78639;' +
+    '}' +
+    '' +
     '#post_content {' +
         'border: 0;' +
         'height: 200px;' +
@@ -1170,7 +1238,7 @@ _lib.addStyles(
     '.uploadsuccess { color:#090; }' +
     '' +
     '#upload_panel {' +
-        'position: fixed;' +
+        'position: absolute;' +
     '' +
         'border: 0px solid #ccc;' +
         'border-radius: 5px;' +
@@ -1196,6 +1264,11 @@ _lib.addStyles(
     '#upload_msg {' +
         'color: red;' +
         'padding-left: 3px;' +
+    '}' +
+    '.fastquote_btn, .multiquote_btn {' +
+        'display: inline-block;' +
+        'vertical-align: middle;' +
+        'margin: 0 5px;' +
     '}');
 
 // 绑定快捷键
@@ -1205,23 +1278,35 @@ $(document).keyup(shortcutHandlers);
 
 // 给页面加上引用按钮
 function addQuoteBtn() {
-    var quoteBtn = $('img[src="pic/reply.gif"]').parent();
-    var fastReplyImg = $('<img src="http://file.cc98.org/uploadfile/2013/7/17/2156264601.png">');
-    fastReplyImg.css({
-        'vertical-align': 'middle',
-        'margin-left': '5px'
+    // 插入引用按钮
+    // 获取所有「引用」链接
+    $('a[href*="reannounce.asp"]').each(function(index, ele) {
+        link = $(this);
+
+        // 如果是「答复」则跳过
+        if (link.attr('href').indexOf('setfilter') > 0) return;
+
+        // 如果在完整版中没有图片作为子节点，或者在简版中文字内容不是[引用]
+        // 考虑到简版中纯文字的话还可能伪造[引用]链接，所以再加上对它父节点的判断
+        if (link.children().first().attr('src') !== 'pic/reply.gif'
+            && (link.text() !== '[引用]' || link.parent().get(0).className !== 'usernamedisp'))
+            return;
+
+        link.parent().append('<a href="javascript:void(0);" class="fastquote_btn"><img src="http://file.cc98.org/uploadfile/2010/4/11/2201680240.png"></a>')
+            .append('<a href="javascript:void(0);" class="multiquote_btn"><img src="http://file.cc98.org/uploadfile/2010/5/12/9395977181.png"></a>')
     })
-    var fastReplyBtn = $('<a class="fastreply_btn" href="javascript:void(0);"></a>');
-    fastReplyBtn.append(fastReplyImg);
 
-    quoteBtn.parent().append(fastReplyBtn);
-
-    $('.fastreply_btn').each(function (index, ele) {
+    $('.fastquote_btn').each(function (index, ele) {
         var storey = (index === 9) ? 0 : (index + 1);
-        this.id = 'fastreply_' +  storey;
         $(this).click(function() { addFastQuote(location.href, storey); });
+    });
+
+    $('.multiquote_btn').each(function (index, ele) {
+        var storey = (index === 9) ? 0 : (index + 1);
+        $(this).click(function() { addMultiQuote(location.href, storey); });
     });
 }
 
 addQuoteBtn();
+
 });
