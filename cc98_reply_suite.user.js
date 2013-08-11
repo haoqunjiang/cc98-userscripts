@@ -1167,7 +1167,7 @@ _lib.addStyles(
         'background-color: #fff;' +
         'border: 5px solid transparent;' +
         'border-radius: 5px;' +
-        'box-shadow: rgaa(0, 0, 0, 0.4) 0 0 18px;' +
+        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 18px;' +
     '}' +
     '#emot_panel img {' +
         'cursor: pointer;' +
