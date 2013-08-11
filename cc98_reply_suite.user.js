@@ -588,7 +588,7 @@ function showExpressionList() {
         "position": "fixed",
         "background-color": "#fff",
         "z-index": 100,
-        "margin-top": "-25px",
+        "margin-top": "-24px",  // 比原表情的位置偏离1px，以覆盖住后面表示被选中的虚线框
         "margin-left": "-1px"
     });
 
@@ -843,7 +843,7 @@ function showDialog() {
     '<table id="attach_table">' +
         '<thead>' +
             '<tr>' +
-                '<th width="50%">点击附件文件名，将其添加到帖子内容中</th>' +
+                '<th id="filenames" width="50%">点击文件名添加到帖子中（点此全部加入）</th>' +
                 '<th width="20%">大小</th>' +
                 '<th width="30%">状态</th>' +
             '</tr>' +
@@ -877,9 +877,10 @@ function showDialog() {
     $('body').append(reply_dialog_html);
 
     var reply_dialog = $('#reply_dialog');
+    // 居中（可见区域内绝对居中，不是固定居中，考虑到上传文件数量可能特别多超过可见范围）
     reply_dialog.css({
-        "top": (document.body.clientHeight - reply_dialog.height()) / 2,
-        "left": (document.body.clientWidth - reply_dialog.width()) / 2
+        "top": (document.body.clientHeight - reply_dialog.height()) / 2 + $(window).scrollTop(),
+        "left": (document.body.clientWidth - reply_dialog.width()) / 2 + $(window).scrollLeft()
     });
 
     // 各种事件绑定
@@ -941,6 +942,9 @@ function showDialog() {
     // 提交
     $('#submit_post').click(submit);
 
+    // 将所有上传文件加到帖子中
+    $('#filenames').css('cursor', 'pointer').click(function() { $('.filename').click(); });
+
 
     // 打开回复时将鼠标焦点定到输入框
     $('#post_content').focus();
@@ -985,9 +989,10 @@ function shortcutHandlers(evt) {
         showDialog();
     }
 
-    // ESC 关闭回复框
+    // ESC 关闭回复框和上传框
     if (evt.keyCode === 27) {
         $('#reply_dialog').remove();
+        $('#upload_panel').remove();
     }
 
     // CTRL + ENTER 提交回复
@@ -1007,7 +1012,7 @@ _dom.addStyles(
         'background-color: white;' +
         'font: 12px/1.4 ubuntu, "Lucida Grande", "Hiragino Sans GB W3", "Microsoft Yahei", sans-serif;' +
         'width: 650px;' +
-        'position: fixed;' +
+        'position: absolute;' +
         'border: 5px solid transparent;' +
         'border-radius: 5px;' +
         'box-shadow: rgba(0, 0, 0, 0.4) 0 0 20px;' +
