@@ -20,66 +20,10 @@
 // 表情
 // 提示输入内容的最大长度
 
-// 来自JavaScript SDK的全局变量
-var _cc98, _lib, _dom;
-
 // 自己写的cc98 JavaScript SDK
+// _lib对象是各种辅助函数，比如解析querystring，ajax调用，xpath等
 // _cc98对象中是各种98相关的函数，比如发米、回帖、站短、解析页面等
-// _lib对象是各种辅助函数，比如querystring相关函数，ajax函数等
-// _dom对象是DOM相关操作，比如xpath等
 (function() {
-
-var FAMI_URL = "http://www.cc98.org/master_users.asp?action=award";
-var PM_URL = "http://www.cc98.org/messanger.asp?action=send";
-var REPLY_URL = "http://www.cc98.org/SaveReAnnounce.asp?method=Topic";
-var EDIT_URL = "http://www.cc98.org/SaveditAnnounce.asp?";
-
-var POST_COUNT_RE = /本主题贴数\s*<b>(\d+)<\/b>/ig;
-
-// 以下三个没有考虑被删除的帖子，因为在当前页解析的时候DisplayDel()和正常的发帖时间之类的会一起出现，导致匹配会乱掉
-// 因此引起的发米机发米楼层可能不精确的问题也没办法了……
-var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
-var ANNOUNCEID_RE = /<a name="(\d{2,})">/g; // 注意网页上<a name="1">之类的标签是作为#0的anchor出现的
-var POST_TIME_RE = /<\/a>\s*([^AP]*[AP]M)\s*<\/td>/g;
-
-var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止|>DisplayDel()/ig;
-
-// 用于在getPostContent()函数中去掉回复可见的内容
-var REPLYVIEW_RE = /<hr noshade size=1>.*<hr noshade size=1>/ig;
-
-// 默认文件上传到的版面：论坛帮助
-// 允许 gif|docx|xlsx|pptx|pdf|xap|jpg|jpeg|png|bmp|rar|txt|zip|mid|rm|doc|mp3
-var DEFAULT_UPLOAD_BOARDID = 184;
-
-// 其他文件扩展名与允许上传的boardid的对应列表
-var file2boardid = {
-    "ipa": 598, // iOS
-    "ppt": 598,
-    "xls": 598,
-    "chm": 598,
-    "wma": 169, // 摇滚和独立音乐
-    "lrc": 169,
-    "asf": 169,
-    "flv": 169,
-    "wmv": 169,
-    "rmvb": 169,
-    "mpg": 169,
-    "avi": 169,
-    "swf": 170, // 史海拾贝
-    "rep": 200, // 星际专区
-    "tar": 212, // Linux天地
-    "gz": 212,
-    "bz2": 212,
-    "tbz": 212,
-    "tgz": 212,
-    "psd": 239, // 贴图工坊
-    "gtp": 308, // 乱弹吉他
-    "gp3": 308,
-    "gp4": 308,
-    "gp5": 308,
-    "torrent": 499, // 多媒体技术
-    "srt": 499
-};
 
 // Chrome 没有sendAsBinary函数，这里是一个实现
 if (!XMLHttpRequest.prototype.sendAsBinary) {
@@ -93,276 +37,22 @@ if (!XMLHttpRequest.prototype.sendAsBinary) {
     }
 }
 
-// 98相关的函数接口
-// fami, reply, sendPM, parseTopicPage, postCount, pageCount, getPostContent, formatURL
-_cc98 = {
-
-    // 发米/扣米
-    // @param {string}      opts.url 帖子地址
-    // @param {Number}      opts.announceid 回帖ID
-    // @param {Number}      opts.amount 发米/扣米数量[0-1000]
-    // @param {string}      opts.reason 发米理由
-    // @param {boolean}     opts.ismsg  站短/不站短
-    // @param {boolean}     [opts.awardtype=true] 是否发米
-    // @param {boolean}     [opts.async=true] 是否异步
-    // @param {function(text)} [opts.callback=function(){}] 回调函数，参数为bool类型，表示成功与否
-    fami: function(opts) {
-        opts.callback = opts.callback || (function() {});
-        opts.awardtype = opts.awardtype || (opts.awardtype === undefined);
-
-        var params = _lib.parseQS(opts["url"]);
-        var boardid = params["boardid"];
-        var topicid = params["id"];
-
-        _lib.ajax({
-            "type": "POST",
-            "url": FAMI_URL,
-            "data": {
-                "awardtype": opts["awardtype"] ? 0 : 1,
-                "boardid": boardid,
-                "topicid": topicid,
-                "announceid": opts["announceid"],
-                "doWealth": opts["amount"],
-                "content": opts["reason"],
-                "ismsg": opts["ismsg"] ? "on" : ""
-            },
-            "success": opts["callback"],
-            "async": opts["async"]
-        });
-    },
-
-    // 回帖
-    // @param {string}  opts.url 帖子地址
-    // @param {string}  opts.expression 发帖心情
-    // @param {string}  opts.content 回帖内容
-    // @param {string}  [opts.password] md5加密后的密码（可以从cookie中获取）
-    // @param {string}  [opts.username] 用户名
-    // @param {string}  [opts.subject] 发帖主题
-    // @param {Number}  [opts.replyid] 引用的帖子的announceid
-    // @param {boolean} [opts.edit] 是否是在编辑已发布的帖子（是的话必须提供replyid）
-    // @param {boolean} [opts.sendsms] 站短提示
-    // @param {boolean} [opts.viewerfilter] 使用指定用户可见
-    // @param {string}  [opts.allowedviewers] 可见用户
-    // @param {boolean} [opts.async] 是否异步（默认为真）
-    // @param {function(text)} [opts.callback=function(){}] 回调函数
-    reply: function(opts) {
-        var params = _lib.parseQS(opts["url"]);
-        var postURL = REPLY_URL + "&boardid=" + params["boardid"];
-        if (opts["edit"]) {
-            postURL = EDIT_URL + "boardid=" + params["boardid"] + "&replyid=" + opts["replyid"] + "&id=" + params["id"];
-        }
-
-        if (!opts.password) {
-            opts.password = _lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['password'];
-        }
-
-        var data = {
-                "subject": opts["subject"] || "",
-                "expression": opts["expression"],
-                "content": opts["content"],
-                "followup": opts["edit"] ? params["id"] : (opts["replyid"] || params["id"]),
-                "replyid": opts["replyid"] || params["id"],
-                "sendsms": opts["sendsms"] ? "1" : "0",
-                "rootid": params["id"],
-                "star": params["star"] || "1",
-                "username": opts["username"],
-                "passwd": opts["password"],
-                "signflag": "yes",
-                "enableviewerfilter": opts["viewerfilter"] ? "1" : "",
-            };
-        if (opts["viewerfilter"]) {
-            data["allowedviewers"] = opts["allowedviewers"] || "";
-        }
-
-        _lib.ajax({
-            "type": "POST",
-            "url": postURL,
-            "data": data,
-            "success": opts["callback"],
-            "async": opts["async"],
-            
-        });
-    },
-
-    // 站短
-    // @param {string}  opts.recipient 收件人
-    // @param {string}  opts.subject 站短标题
-    // @param {string}  opts.message 站短内容
-    // @param {boolean} [opts.async] 是否异步
-    // @param {function(text)} [opts.callback=function(){}] 回调函数
-    sendPM: function(opts) {
-        _lib.ajax({
-            "type": "POST",
-            "url": PM_URL,
-            "data": {
-                "touser": opts["recipient"],
-                "title": opts["subject"],
-                "message": opts["message"]
-            },
-            "success": opts["callback"],
-            "async": opts["async"]
-        });
-    },
-
-    upload: function(file, callback) {
-        var reader = new FileReader();
-
-        var ext = file.name.substring(file.name.lastIndexOf(".") + 1);    // 文件扩展名
-        var boardid = file2boardid[ext] || DEFAULT_UPLOAD_BOARDID;
-        var url = "http://www.cc98.org/saveannouce_upfile.asp?boardid=" + boardid;
-
-        reader.onload = function(e)
-        {
-            var boundary = "----------------";
-            boundary += parseInt(Math.random()*98989898+1);
-            boundary += parseInt(Math.random()*98989898+1);
-
-            var data = [boundary,"\r\n",
-                "Content-Disposition: form-data; name=\"act\"\r\n\r\nupload",
-                "\r\n",boundary,"\r\n",
-                "Content-Disposition: form-data; name=\"fname\"\r\n\r\n",file.name,
-                "\r\n",boundary,"\r\n",
-                "Content-Disposition: form-data; name=\"file1\"; filename=\"",file.name,"\"\r\n",
-                "Content-Type: ",file.type,"\r\n\r\n",
-                e.target.result,
-                "\r\n",boundary,"\r\n",
-                "Content-Disposition: form-data; name=\"Submit\"\r\n\r\n\xc9\xcf\xb4\xab",  // 上传
-                "\r\n",boundary,"--\r\n"].join("");
-
-            _lib.ajax({
-                "type": "POST",
-                "url": url,
-                "contentType": "multipart/form-data; boundary="+boundary,
-                "data": data,
-                "success": callback
-            })
-
-        }
-        reader.readAsBinaryString(file);
-    },
-
-    // 获取页面中的用户列表，回帖时间回帖ID
-    // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
-    parseTopicPage: function(htmlText) {
-        if (!htmlText) htmlText = document.body.innerHTML;
-        var postList = [];
-        
-        var nameArr = htmlText.match(NAME_RE);
-        nameArr.forEach(function(name, index, arr) {
-            var post = {};
-            post["username"] = name.replace(NAME_RE, "$1");
-            postList.push(post);
-        });
-
-        var idArr = htmlText.match(ANNOUNCEID_RE);
-        // 考虑到心灵没有announceid，所以idArr可能为空
-        if (idArr) {
-            idArr.forEach(function(id, index, arr) {
-                postList[index]["announceid"] = id.replace(ANNOUNCEID_RE, "$1");
-            });
-        }
-
-        var timeArr = htmlText.match(POST_TIME_RE);
-        if (timeArr) {
-            timeArr.forEach(function(t, index, arr) {
-                postList[index]["posttime"] = t.replace(POST_TIME_RE, "$1");
-            })
-        }
-
-        return postList;
-    },
-
-    postCount: function(htmlText) {
-        if (!htmlText) htmlText = document.body.innerHTML;
-        return parseInt(htmlText.match(POST_COUNT_RE)[0].replace(POST_COUNT_RE, "$1"));
-    },
-
-    pageCount: function(htmlText) {
-        if (!htmlText) htmlText = document.body.innerHTML;
-        return Math.ceil(_cc98.postCount(htmlText) / 10);
-    },
-
-    // 回帖内容如果要从html转成ubb的话太麻烦
-    // 但是没有执行js的rawhtml里有包含ubb代码
-    // 所以为了方便起见，把获取帖子内容的功能独立出来
-    // 使用一个sync的ajax请求获取rawhtml再解析
-    getPostContent: function(url, storey) {
-        var result;
-        POST_RE.lastIndex = 0;  // reinitialize the regexp
-        _lib.ajax({
-            "type": "GET",
-            "url": url,
-            "success": function(rawhtml) {
-                for (var i = 0; i != storey-1; ++i)
-                    POST_RE.exec(rawhtml)
-                result = POST_RE.exec(rawhtml)[1] || "";
-                result = result
-                    .replace(REPLYVIEW_RE, "")
-                    .replace(/<br>/ig, "\n");
-            },
-            "async": false
-        });
-        return _lib.unescapeHTML(result);
-    },
-
-    // 格式化网址，去除无用的参数并转为相对链接
-    // @param {string}  url 要格式化的网址
-    // @param {boolean} maxPageFix 是否修正url中star参数的值，使其不超过当前最后页的实际值
-    formatURL: function(url, maxPageFix) {
-        var urlObj = _lib.parseURL(url);
-
-        // 不在www.cc98.org域名下
-        if (urlObj["host"] != "www.cc98.org") {
-            return url;
-        }
-
-        // http://www.cc98.org/
-        if (!urlObj["path"]) {
-            return "/";
-        }
-
-        var params = _lib.parseQS(urlObj["query"]);
-        var hash = urlObj["hash"] ? ("#" + urlObj["hash"]) : ""
-
-        // 不是dispbbs.asp开头的链接，只去掉空的get参数，转为相对链接，不做其他处理
-        if (urlObj["path"] === "dispbbs,asp") {
-            return "/" + urlObj["path"] + "?" + _lib.toQS(params) + hash;
-        }
-
-        // 如果不是在追踪页面，就去掉replyid
-        if (!params["trace"]) {
-            params["replyid"] = "";
-        }
-        params["page"] = "";    // 去掉page
-
-        // 
-        if (params["star"] && maxPageFix && parseInt(params["star"]) > _cc98.pageCount()) {
-            params["star"] = _cc98.pageCount()
-        }
-
-        params["star"] = (params["star"] && params["star"] !== "1") ? params["star"] : "";    // star=1时去掉
-        return "/" + urlObj["path"] + "?" + _lib.toQS(params) + hash;
-    }
-};
-
-
-
-// 一些_lib函数，跟98无关但方便编程
-// parseQS, toQS, parseURL, parseCookies, unescapeHTML, ajax
-_lib = {
+// 辅助函数
+// parseQS, toQS, parseURL, parseCookies, unescapeHTML, ajax, xpath, addStyles
+window._lib = {
 
     // parse the url get parameters
     parseQS: function(url) {
-        url = url.toLowerCase().split("#")[0];  // remove the hash part
-        var t = url.indexOf("?");
+        url = url.toLowerCase().split('#')[0];  // remove the hash part
+        var t = url.indexOf('?');
         var hash = {};
         if (t >= 0) {
-            var params = url.substring(t+1).split("&");
-        } else {    // plain query string without "?" (e.g. in cookies)
-            var params = url.split("&");
+            var params = url.substring(t+1).split('&');
+        } else {    // plain query string without '?' (e.g. in cookies)
+            var params = url.split('&');
         }
         for (var i = 0; i < params.length; ++i) {
-            var val = params[i].split("=");
+            var val = params[i].split('=');
             hash[decodeURIComponent(val[0])] = decodeURIComponent(val[1]);
         }
         return hash;
@@ -371,11 +61,11 @@ _lib = {
     toQS: function(obj) {
         var ret = [];
         for (var key in obj) {
-            if ("" === key) continue;
-            if ("" === obj[key]) continue;
-            ret.push(encodeURIComponent(key) + "=" + encodeURIComponent(obj[key]));
+            if ('' === key) continue;
+            if ('' === obj[key]) continue;
+            ret.push(encodeURIComponent(key) + '=' + encodeURIComponent(obj[key]));
         }
-        return ret.join("&");
+        return ret.join('&');
     },
 
     parseURL: function(url) {
@@ -383,26 +73,26 @@ _lib = {
         var parse_url = /^(?:([A-Za-z]+):)?(\/{0,3})([0-9.\-A-Za-z]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?([^#]*))?(?:#(.*))?$/
         var arr = parse_url.exec(url);
         var result = {};
-        result["url"] = arr[0];
-        result["scheme"] = arr[1];
-        result["slash"] = arr[2];
-        result["host"] = arr[3];
-        result["port"] = arr[4];
-        result["path"] = arr[5];
-        result["query"] = arr[6];
-        result["hash"] = arr[7];
+        result['url'] = arr[0];
+        result['scheme'] = arr[1];
+        result['slash'] = arr[2];
+        result['host'] = arr[3];
+        result['port'] = arr[4];
+        result['path'] = arr[5];
+        result['query'] = arr[6];
+        result['hash'] = arr[7];
         return result;
     },
 
     parseCookies: function(theCookie) {
         var cookies = {};           // The object we will return
         var all = theCookie;        // Get all cookies in one big string
-        if (all === "")             // If the property is the empty string
+        if (all === '')             // If the property is the empty string
             return cookies;         // return an empty object
-        var list = all.split("; "); // Split into individual name=value pairs
+        var list = all.split('; '); // Split into individual name=value pairs
         for(var i = 0; i < list.length; i++) {  // For each cookie
             var cookie = list[i];
-            var p = cookie.indexOf("=");        // Find the first = sign
+            var p = cookie.indexOf('=');        // Find the first = sign
             var name = cookie.substring(0,p);   // Get cookie name
             var value = cookie.substring(p+1);  // Get cookie value
             value = decodeURIComponent(value);  // Decode the value
@@ -415,36 +105,34 @@ _lib = {
     unescapeHTML: function(input) {
         var e = document.createElement('div');
         e.innerHTML = input;
-        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+        return e.childNodes.length === 0 ? '' : e.childNodes[0].nodeValue;
     },
 
     ajax: function(opts) {
         opts = {
-            type: opts.type || "GET",
-            url: opts.url || "",
+            type: opts.type || 'GET',
+            url: opts.url || '',
             data: opts.data || null,
-            contentType: opts.contentType || "application/x-www-form-urlencoded; charset=UTF-8",
+            contentType: opts.contentType || 'application/x-www-form-urlencoded; charset=UTF-8',
             success: opts.success || function() {},
             async: opts.async || (opts.async === undefined)
         };
 
         var xhr = new XMLHttpRequest;
         xhr.open(opts.type, opts.url, opts.async);
-        xhr.setRequestHeader("Content-type", opts.contentType);
+        xhr.setRequestHeader('Content-type', opts.contentType);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 opts.success(xhr.responseText);
             }
         };
-        if (opts.contentType === "application/x-www-form-urlencoded; charset=UTF-8") {
+        if (opts.contentType === 'application/x-www-form-urlencoded; charset=UTF-8') {
             xhr.send(_lib.toQS(opts.data));
         } else {
             xhr.sendAsBinary(opts.data)
         }
-    }
-};
+    },
 
-_dom = {
     // xpath query
     //@return {Array}   返回由符合条件的DOMElement组成的数组
     xpath: function(expr, contextNode) {
@@ -461,15 +149,312 @@ _dom = {
     },
     // 添加CSS
     addStyles: function(css) {
-        var head = document.getElementsByTagName("head")[0];
-        var style = document.createElement("style");
+        var head = document.getElementsByTagName('head')[0];
+        var style = document.createElement('style');
 
-        style.setAttribute("type", "text/css");
+        style.setAttribute('type', 'text/css');
         style.innerHTML = css;
         head.appendChild(style);
     }
 }
 
+// 98相关的函数接口
+// fami, reply, sendPM, upload, getPostContent, parseTopicPage, postCount, pageCount, formatURL
+window._cc98 = function() {
+
+    // 各种常量
+    var FAMI_URL = 'http://www.cc98.org/master_users.asp?action=award';
+    var PM_URL = 'http://www.cc98.org/messanger.asp?action=send';
+    var REPLY_URL = 'http://www.cc98.org/SaveReAnnounce.asp?method=Topic';
+    var EDIT_URL = 'http://www.cc98.org/SaveditAnnounce.asp?';
+
+    var POST_COUNT_RE = /本主题贴数\s*<b>(\d+)<\/b>/ig;
+
+    // 以下三个没有考虑被删除的帖子，因为在当前页解析的时候DisplayDel()和正常的发帖时间之类的会一起出现，导致匹配会乱掉
+    // 因此引起的发米机发米楼层可能不精确的问题也没办法了……
+    var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
+    var ANNOUNCEID_RE = /<a name="(\d{2,})">/g; // 注意网页上<a name="1">之类的标签是作为#0的anchor出现的
+    var POST_TIME_RE = /<\/a>\s*([^AP]*[AP]M)\s*<\/td>/g;
+
+    var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止|>DisplayDel()/ig;
+
+    // 用于在getPostContent()函数中去掉回复可见的内容
+    var REPLYVIEW_RE = /<hr noshade size=1>.*<hr noshade size=1>/ig;
+
+    // 默认文件上传到的版面：论坛帮助
+    // 允许 gif|docx|xlsx|pptx|pdf|xap|jpg|jpeg|png|bmp|rar|txt|zip|mid|rm|doc|mp3
+    var DEFAULT_UPLOAD_BOARDID = 184;
+
+    // 其他文件扩展名与允许上传的boardid的对应列表
+    var file2boardid = {
+        'ipa': 598, // iOS
+        'ppt': 598,
+        'xls': 598,
+        'chm': 598,
+        'wma': 169, // 摇滚和独立音乐
+        'lrc': 169,
+        'asf': 169,
+        'flv': 169,
+        'wmv': 169,
+        'rmvb': 169,
+        'mpg': 169,
+        'avi': 169,
+        'swf': 170, // 史海拾贝
+        'rep': 200, // 星际专区
+        'tar': 212, // Linux天地
+        'gz': 212,
+        'bz2': 212,
+        'tbz': 212,
+        'tgz': 212,
+        'psd': 239, // 贴图工坊
+        'gtp': 308, // 乱弹吉他
+        'gp3': 308,
+        'gp4': 308,
+        'gp5': 308,
+        'torrent': 499, // 多媒体技术
+        'srt': 499
+    };
+
+    // 发米/扣米
+    // @param {string}      opts.url 帖子地址
+    // @param {Number}      opts.announceid 回帖ID
+    // @param {Number}      opts.amount 发米/扣米数量[0-1000]
+    // @param {string}      opts.reason 发米理由
+    // @param {boolean}     opts.ismsg  站短/不站短
+    // @param {boolean}     [opts.awardtype=true] 是否发米
+    // @param {function(responseText)} [opts.callback=function(){}] 回调函数
+    this.fami = function(opts) {
+        opts.callback = opts.callback || (function() {});
+        opts.awardtype = opts.awardtype || (opts.awardtype === undefined);
+
+        var params = _lib.parseQS(opts["url"]);
+        var boardid = params["boardid"];
+        var topicid = params["id"];
+
+        _lib.ajax({
+            'type': 'POST',
+            'url': FAMI_URL,
+            'data': {
+                'awardtype': opts['awardtype'] ? 0 : 1,
+                'boardid': boardid,
+                'topicid': topicid,
+                'announceid': opts['announceid'],
+                'doWealth': opts['amount'],
+                'content': opts['reason'],
+                'ismsg': opts['ismsg'] ? 'on' : ''
+            },
+            'success': opts['callback'],
+        });
+    },
+
+    // 回帖
+    // @param {string}  opts.url 帖子地址
+    // @param {string}  opts.expression 发帖心情
+    // @param {string}  opts.content 回帖内容
+    // @param {string}  [opts.subject] 发帖主题
+    // @param {string}  [opts.password] md5加密后的密码（不提供就从cookie中获取）
+    // @param {boolean} [opts.edit] 是否是在编辑已发布的帖子（是的话必须提供replyid）
+    // @param {Number}  [opts.replyid] 引用的帖子的announceid
+    // @param {boolean} [opts.sendsms] 站短提示
+    // @param {boolean} [opts.viewerfilter] 使用指定用户可见
+    // @param {string}  [opts.allowedviewers] 可见用户
+    // @param {function(responseText)} [opts.callback=function(){}] 回调函数
+    this.reply = function(opts) {
+        var params = _lib.parseQS(opts["url"]);
+        var postURL = REPLY_URL + "&boardid=" + params["boardid"];
+        if (opts["edit"]) {
+            postURL = EDIT_URL + "boardid=" + params["boardid"] + "&replyid=" + opts["replyid"] + "&id=" + params["id"];
+        }
+
+        if (!opts.password) {
+            opts.password = _lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['password'];
+        }
+
+        var data = {
+                'subject': opts['subject'] || '',
+                'expression': opts['expression'],
+                'content': opts['content'],
+                'followup': opts['edit'] ? params['id'] : (opts['replyid'] || params['id']),
+                'replyid': opts['replyid'] || params['id'],
+                'sendsms': opts['sendsms'] ? '1' : '0',
+                'rootid': params['id'],
+                'star': params['star'] || '1',
+                'passwd': opts['password'],
+                'signflag': 'yes',
+                'enableviewerfilter': opts['viewerfilter'] ? '1' : '',
+            };
+        if (opts['viewerfilter']) {
+            data['allowedviewers'] = opts['allowedviewers'] || '';
+        }
+
+        _lib.ajax({
+            'type': 'POST',
+            'url': postURL,
+            'data': data,
+            'success': opts['callback']
+        });
+    },
+
+    // 站短
+    // @param {string}  opts.recipient 收件人
+    // @param {string}  opts.subject 站短标题
+    // @param {string}  opts.message 站短内容
+    // @param {function(responseText)} [opts.callback=function(){}] 回调函数
+    this.sendPM = function(opts) {
+        _lib.ajax({
+            "type": "POST",
+            "url": PM_URL,
+            "data": {
+                "touser": opts["recipient"],
+                "title": opts["subject"],
+                "message": opts["message"]
+            },
+            "success": opts["callback"]
+        });
+    },
+
+    this.upload = function(file, callback) {
+        var reader = new FileReader();
+
+        var ext = file.name.substring(file.name.lastIndexOf('.') + 1);    // 文件扩展名
+        var boardid = file2boardid[ext] || DEFAULT_UPLOAD_BOARDID;
+        var url = 'http://www.cc98.org/saveannouce_upfile.asp?boardid=' + boardid;
+
+        reader.onload = function(e)
+        {
+            var boundary = '----------------';
+            boundary += parseInt(Math.random()*98989898+1);
+            boundary += parseInt(Math.random()*98989898+1);
+
+            var data = [boundary,'\r\n',
+                'Content-Disposition: form-data; name=\'act\'\r\n\r\nupload',
+                '\r\n',boundary,'\r\n',
+                'Content-Disposition: form-data; name=\'fname\'\r\n\r\n',file.name,
+                '\r\n',boundary,'\r\n',
+                'Content-Disposition: form-data; name=\'file1\'; filename=\'',file.name,'\'\r\n',
+                'Content-Type: ',file.type,'\r\n\r\n',
+                e.target.result,
+                '\r\n',boundary,'\r\n',
+                'Content-Disposition: form-data; name=\'Submit\'\r\n\r\n\xc9\xcf\xb4\xab',  // 上传
+                '\r\n',boundary,'--\r\n'].join('');
+
+            _lib.ajax({
+                'type': 'POST',
+                'url': url,
+                'contentType': 'multipart/form-data; boundary='+boundary,
+                'data': data,
+                'success': callback
+            })
+
+        }
+        reader.readAsBinaryString(file);
+    },
+
+    // 回帖内容如果要从html转成ubb的话太麻烦，但是没有执行js的rawhtml里有包含ubb代码
+    // 所以为了方便起见，把获取帖子内容的功能独立出来，为它再开一个ajax请求
+    // @param {string} url 网址
+    // @param {Number} storey 楼层[1-10]
+    // @param {function(postContent)) callback 回调函数
+    this.getPostContent = function(url, storey, callback) {
+        var result;
+        POST_RE.lastIndex = 0;  // reinitialize the regexp
+        _lib.ajax({
+            'type': 'GET',
+            'url': url,
+            'success': function(rawhtml) {
+                for (var i = 0; i != storey-1; ++i)
+                    POST_RE.exec(rawhtml)
+                    result = POST_RE.exec(rawhtml)[1] || '';
+                    result = result
+                        .replace(REPLYVIEW_RE, '')
+                        .replace(/<br>/ig, '\n');
+                    callback(_lib.unescapeHTML(result));
+            }
+        });
+    },
+
+    // 获取页面中的用户列表，回帖时间回帖ID
+    // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
+    this.parseTopicPage = function(htmlText) {
+        if (!htmlText) htmlText = document.body.innerHTML;
+        var postList = [];
+        
+        var nameArr = htmlText.match(NAME_RE);
+        nameArr.forEach(function(name, index, arr) {
+            var post = {};
+            post['username'] = name.replace(NAME_RE, '$1');
+            postList.push(post);
+        });
+
+        var idArr = htmlText.match(ANNOUNCEID_RE);
+        // 考虑到心灵没有announceid，所以idArr可能为空
+        if (idArr) {
+            idArr.forEach(function(id, index, arr) {
+                postList[index]['announceid'] = id.replace(ANNOUNCEID_RE, '$1');
+            });
+        }
+
+        var timeArr = htmlText.match(POST_TIME_RE);
+        if (timeArr) {
+            timeArr.forEach(function(t, index, arr) {
+                postList[index]['posttime'] = t.replace(POST_TIME_RE, '$1');
+            })
+        }
+
+        return postList;
+    },
+
+    this.postCount = function(htmlText) {
+        if (!htmlText) htmlText = document.body.innerHTML;
+        return parseInt(htmlText.match(POST_COUNT_RE)[0].replace(POST_COUNT_RE, '$1'));
+    },
+
+    this.pageCount = function(htmlText) {
+        if (!htmlText) htmlText = document.body.innerHTML;
+        return Math.ceil(_cc98.postCount(htmlText) / 10);
+    },
+
+    // 格式化网址，去除无用的参数并转为相对链接
+    // @param {string}  url 要格式化的网址
+    // @param {boolean} maxPageFix 是否修正url中star参数的值，使其不超过当前最后页的实际值
+    this.formatURL = function(url, maxPageFix) {
+        var urlObj = _lib.parseURL(url);
+
+        // 不在www.cc98.org域名下
+        if (urlObj['host'] != 'www.cc98.org') {
+            return url;
+        }
+
+        // http://www.cc98.org/
+        if (!urlObj['path']) {
+            return '/';
+        }
+
+        var params = _lib.parseQS(urlObj['query']);
+        var hash = urlObj['hash'] ? ('#' + urlObj['hash']) : ''
+
+        // 不是dispbbs.asp开头的链接，只去掉空的get参数，转为相对链接，不做其他处理
+        if (urlObj['path'] === 'dispbbs,asp') {
+            return '/' + urlObj['path'] + '?' + _lib.toQS(params) + hash;
+        }
+
+        // 如果不是在追踪页面，就去掉replyid
+        if (!params['trace']) {
+            params['replyid'] = '';
+        }
+        params['page'] = '';    // 去掉page
+
+        // 
+        if (params['star'] && maxPageFix && parseInt(params['star']) > _cc98.pageCount()) {
+            params['star'] = _cc98.pageCount()
+        }
+
+        params['star'] = (params['star'] && params['star'] !== '1') ? params['star'] : '';    // star=1时去掉
+        return '/' + urlObj['path'] + '?' + _lib.toQS(params) + hash;
+    }
+
+    return this;
+}();
 })();
 
 
@@ -585,19 +570,19 @@ function showExpressionList() {
 
     var expressionList = $('#expression_list');
     expressionList.css({
-        "position": "fixed",
-        "background-color": "#fff",
-        "z-index": 100,
-        "margin-top": "-24px",  // 比原表情的位置偏离1px，以覆盖住后面表示被选中的虚线框
-        "margin-left": "-1px"
+        'position': 'relative',
+        'background-color': '#fff',
+        'z-index': 100,
+        'margin-top': '-24px',  // 比原表情的位置偏离1px，以覆盖住后面表示被选中的虚线框
+        'margin-left': '-1px'
     });
 
     for (var i = 1; i <= 22; ++i) {
         var img = $('<img src="http://www.cc98.org/face/face' + i + '.gif">');
         img.css({
-            "cursor": "pointer",
-            "margin": "0 10px 0 0",
-            "border": "0"
+            'cursor': 'pointer',
+            'margin': '0 10px 0 0',
+            'border': '0'
         });
 
         img.click(function() {
@@ -879,8 +864,8 @@ function showDialog() {
     var reply_dialog = $('#reply_dialog');
     // 居中（可见区域内绝对居中，不是固定居中，考虑到上传文件数量可能特别多超过可见范围）
     reply_dialog.css({
-        "top": (document.body.clientHeight - reply_dialog.height()) / 2 + $(window).scrollTop(),
-        "left": (document.body.clientWidth - reply_dialog.width()) / 2 + $(window).scrollLeft()
+        'top': (document.body.clientHeight - reply_dialog.height()) / 2 + $(window).scrollTop(),
+        'left': (document.body.clientWidth - reply_dialog.width()) / 2 + $(window).scrollLeft()
     });
 
     // 各种事件绑定
@@ -901,12 +886,12 @@ function showDialog() {
         if ($('#upload_panel').length) return;
 
         $('body').append(upload_panel_html);  // 这样每次都会新建一个div而不是重复使用之前的那个
-        $('#upload_title').drags({"draggable": "#upload_panel"});
+        $('#upload_title').drags({'draggable': '#upload_panel'});
         $('#upload_close_btn').click(function() { $('#upload_panel').remove(); })
         var upload_panel = $('#upload_panel');
         upload_panel.css({
-            "top": (document.body.clientHeight - upload_panel.height()) / 2 ,
-            "left": (document.body.clientWidth - upload_panel.width()) / 2
+            'top': (document.body.clientHeight - upload_panel.height()) / 2 ,
+            'left': (document.body.clientWidth - upload_panel.width()) / 2
         });
 
         $('#confirm_upload').click(uploadFiles);
@@ -962,14 +947,14 @@ function addQuoteURL(url, storey, quoteContent) {
 // 添加回复内容（这里的storey是1-9再到0,，不是从0开始的）
 function addFastQuote(url, storey) {
     replyNum = storey + 48;
-    if (!document.getElementById("reply"+replyNum)) return;
+    if (!document.getElementById('reply'+replyNum)) return;
 
     showDialog();
 
-    var replyurl = document.getElementById("reply"+replyNum).value;
+    var replyurl = document.getElementById('reply'+replyNum).value;
     $.ajax({
-        "url": replyurl,
-        "success": function(html) {
+        'url': replyurl,
+        'success': function(html) {
             var quoteContent = (/<textarea.*>([\s\S]*)<\/textarea>/ig).exec(html)[1];
 
             if (config.viewOriginalPost) {
@@ -1006,7 +991,7 @@ function shortcutHandlers(evt) {
     }
 }
 
-_dom.addStyles(
+_lib.addStyles(
     '#reply_dialog {' +
         'color: #222;' +
         'background-color: white;' +
@@ -1223,15 +1208,15 @@ function addQuoteBtn() {
     var quoteBtn = $('img[src="pic/reply.gif"]').parent();
     var fastReplyImg = $('<img src="http://file.cc98.org/uploadfile/2013/7/17/2156264601.png">');
     fastReplyImg.css({
-        "vertical-align": "middle",
-        "margin-left": "5px"
+        'vertical-align': 'middle',
+        'margin-left': '5px'
     })
     var fastReplyBtn = $('<a class="fastreply_btn" href="javascript:void(0);"></a>');
     fastReplyBtn.append(fastReplyImg);
 
     quoteBtn.parent().append(fastReplyBtn);
 
-    $(".fastreply_btn").each(function (index, ele) {
+    $('.fastreply_btn').each(function (index, ele) {
         var storey = (index === 9) ? 0 : (index + 1);
         this.id = 'fastreply_' +  storey;
         $(this).click(function() { addFastQuote(location.href, storey); });
