@@ -1012,6 +1012,37 @@ function addMultiQuote(url, storey) {
     });
 }
 
+// 给页面加上引用按钮
+function addQuoteBtns() {
+    // 插入引用按钮
+    // 获取所有「引用」链接
+    $('a[href*="reannounce.asp"]').each(function(index, ele) {
+        link = $(this);
+
+        // 如果是「答复」则跳过
+        if (link.attr('href').indexOf('setfilter') > 0) return;
+
+        // 如果在完整版中没有图片作为子节点，或者在简版中文字内容不是[引用]
+        // 考虑到简版中纯文字的话还可能伪造[引用]链接，所以再加上对它父节点的判断
+        if (link.children().first().attr('src') !== 'pic/reply.gif'
+            && (link.text() !== '[引用]' || link.parent().get(0).className !== 'usernamedisp'))
+            return;
+
+        link.parent().append('<a href="javascript:void(0);" class="fastquote_btn"><img src="http://file.cc98.org/uploadfile/2010/4/11/2201680240.png"></a>')
+            .append('<a href="javascript:void(0);" class="multiquote_btn"><img src="http://file.cc98.org/uploadfile/2010/5/12/9395977181.png"></a>')
+    })
+
+    $('.fastquote_btn').each(function (index, ele) {
+        var storey = (index === 9) ? 0 : (index + 1);
+        $(this).click(function() { addFastQuote(location.href, storey); });
+    });
+
+    $('.multiquote_btn').each(function (index, ele) {
+        var storey = (index === 9) ? 0 : (index + 1);
+        $(this).click(function() { addMultiQuote(location.href, storey); });
+    });
+}
+
 // 处理各种键盘快捷键
 function shortcutHandlers(evt) {
     // CTRL + M 打开弹出回复框
@@ -1035,6 +1066,12 @@ function shortcutHandlers(evt) {
         addFastQuote(location.href, evt.keyCode-48);
     }
 }
+
+
+addQuoteBtns();
+
+// 绑定快捷键
+$(document).keyup(shortcutHandlers);
 
 _lib.addStyles(
     '#reply_dialog {' +
@@ -1271,42 +1308,7 @@ _lib.addStyles(
         'margin: 0 5px;' +
     '}');
 
-// 绑定快捷键
-$(document).keyup(shortcutHandlers);
 
-// 基本界面 & 设置界面
-
-// 给页面加上引用按钮
-function addQuoteBtn() {
-    // 插入引用按钮
-    // 获取所有「引用」链接
-    $('a[href*="reannounce.asp"]').each(function(index, ele) {
-        link = $(this);
-
-        // 如果是「答复」则跳过
-        if (link.attr('href').indexOf('setfilter') > 0) return;
-
-        // 如果在完整版中没有图片作为子节点，或者在简版中文字内容不是[引用]
-        // 考虑到简版中纯文字的话还可能伪造[引用]链接，所以再加上对它父节点的判断
-        if (link.children().first().attr('src') !== 'pic/reply.gif'
-            && (link.text() !== '[引用]' || link.parent().get(0).className !== 'usernamedisp'))
-            return;
-
-        link.parent().append('<a href="javascript:void(0);" class="fastquote_btn"><img src="http://file.cc98.org/uploadfile/2010/4/11/2201680240.png"></a>')
-            .append('<a href="javascript:void(0);" class="multiquote_btn"><img src="http://file.cc98.org/uploadfile/2010/5/12/9395977181.png"></a>')
-    })
-
-    $('.fastquote_btn').each(function (index, ele) {
-        var storey = (index === 9) ? 0 : (index + 1);
-        $(this).click(function() { addFastQuote(location.href, storey); });
-    });
-
-    $('.multiquote_btn').each(function (index, ele) {
-        var storey = (index === 9) ? 0 : (index + 1);
-        $(this).click(function() { addMultiQuote(location.href, storey); });
-    });
-}
-
-addQuoteBtn();
+// 设置界面
 
 });
