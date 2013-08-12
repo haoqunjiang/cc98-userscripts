@@ -37,7 +37,7 @@ if (!XMLHttpRequest.prototype.sendAsBinary) {
     }
 }
 
-//
+// 转成UNICODE编码（sendAsBinary不能识别中文）
 function toUnicode(str){
     return escape(str).toLocaleLowerCase().replace(/%u/gi,'\\u');
 }
