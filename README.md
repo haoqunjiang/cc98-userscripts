@@ -11,7 +11,6 @@ cc98scripts
 
 userscripts 链接
 
-- [cc98 id alias](https://userscripts.org/scripts/show/172855) 备注管理
 - [cc98 fami](https://userscripts.org/scripts/show/170866) 发米/扣米机
 - [cc98 qianglou](https://userscripts.org/scripts/show/173069) 抢楼
-- [cc98 shuilou stat](https://userscripts.org/scripts/show/173548) 水楼贴数统计
+- [cc98 reply suite](http://userscripts.org/scripts/show/175450) 快速回复
