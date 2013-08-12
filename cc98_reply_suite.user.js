@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.2.2
+// @version        0.2.5
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -274,6 +274,9 @@ window._cc98 = function() {
         if (!opts.password) {
             opts.password = _lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['password'];
         }
+        if (!opts.username) {
+            opts.username = _lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['username'];
+        }
 
         var data = {
                 'subject': opts['subject'] || '',
@@ -362,7 +365,7 @@ window._cc98 = function() {
     // @param {function(postContent)) callback 回调函数
     this.getPostContent = function(url, storey, callback) {
         var index;  // 实际索引
-        index = ((storey-1) >= 0) ? (storey-1) : 10;
+        index = ((storey-1) >= 0) ? (storey-1) : 9;
         POST_RE.lastIndex = 0;  // reinitialize the regexp
         _lib.ajax({
             'type': 'GET',
@@ -476,7 +479,7 @@ var maxSubjectLength = 100;          // 主题框的最大输入长度(字节数
 // 配置相关
 ////////////////////////////////////////////////////////////////////////////////
 var INITIAL_OPTIONS = {
-    version: 0.1,                   // 脚本的版本号，便于后续升级时对配置做更改
+    version: '0.2.5',                   // 脚本的版本号，便于后续升级时对配置做更改
 
     viewOriginalPost: true,         // 在引用中加入"查看原帖"
     rtString: '➤➤➤➤➤',          // 原帖链接的提示文字
@@ -637,7 +640,7 @@ function toggleEmotions() {
     $('#reply_dialog').append('<div id="emot_panel"></div>');
 
 
-    for (var i = 1; i <= 91; ++i) {
+    for (var i = 0; i <= 91; ++i) {
         var img = $('<img src="http://www.cc98.org/emot/simpleemot/emot' + ((i < 10) ? '0' + i : i) + '.gif">');
 
         img.click(function() {
@@ -845,7 +848,7 @@ function showDialog() {
             '<table class="btn_bar">' +
                 '<tbody>' +
                     '<tr>' +
-                        '<td width="20%"><button id="submit_post" class="soda_button">提交回复</button></td>' +
+                        '<td width="20%"><input type="button" id="submit_post" class="soda_button" value="提交回复"></td>' +
                         '<td width="80%"><span id="submitting_status"></span></td>' +
                     '</tr>' +
                 '</tbody>' +
@@ -881,7 +884,7 @@ function showDialog() {
             '<tbody>' +
                 '<tr>' +
                     '<td><input type="checkbox" id="image_autoshow" name="image_autoshow" value="autoshow"><label for="image_autoshow">直接显示图片</label></td>' +
-                    '<td><button id="confirm_upload" class="soda_button">上传</button></td>' +
+                    '<td><input type="button" id="confirm_upload" class="soda_button" value="上传"></td>' +
                 '</tr>' +
             '</tbody>' +
         '</table>' +
@@ -1001,7 +1004,7 @@ function addFastQuote(url, storey) {
 function addMultiQuote(url, storey) {
     showDialog();
 
-    index = ((storey-1) >= 0) ? (storey-1) : 10
+    index = ((storey-1) >= 0) ? (storey-1) : 9;
     var post = _cc98.parseTopicPage()[index];
 
     if (!post) return;
