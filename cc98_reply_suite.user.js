@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.2.0
+// @version        0.2.1
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -101,7 +101,7 @@ window._lib = {
         return cookies;
     },
 
-    // 将部分常见的转义后的html转回来
+    // 将转义后的html转回来
     unescapeHTML: function(input) {
         var e = document.createElement('div');
         e.innerHTML = input;
@@ -327,15 +327,15 @@ window._cc98 = function() {
             boundary += parseInt(Math.random()*98989898+1);
 
             var data = [boundary,'\r\n',
-                'Content-Disposition: form-data; name=\'act\'\r\n\r\nupload',
+                'Content-Disposition: form-data; name="act"\r\n\r\nupload',
                 '\r\n',boundary,'\r\n',
-                'Content-Disposition: form-data; name=\'fname\'\r\n\r\n',file.name,
+                'Content-Disposition: form-data; name="fname"\r\n\r\n',file.name,
                 '\r\n',boundary,'\r\n',
-                'Content-Disposition: form-data; name=\'file1\'; filename=\'',file.name,'\'\r\n',
+                'Content-Disposition: form-data; name="file1"; filename="',file.name,'"\'\r\n',
                 'Content-Type: ',file.type,'\r\n\r\n',
                 e.target.result,
                 '\r\n',boundary,'\r\n',
-                'Content-Disposition: form-data; name=\'Submit\'\r\n\r\n\xc9\xcf\xb4\xab',  // 上传
+                'Content-Disposition: form-data; name="Submit"\r\n\r\n\xc9\xcf\xb4\xab',  // 上传
                 '\r\n',boundary,'--\r\n'].join('');
 
             _lib.ajax({
