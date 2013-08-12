@@ -37,6 +37,11 @@ if (!XMLHttpRequest.prototype.sendAsBinary) {
     }
 }
 
+//
+function toUnicode(str){
+    return escape(str).toLocaleLowerCase().replace(/%u/gi,'\\u');
+}
+
 // 辅助函数
 // parseQS, toQS, parseURL, parseCookies, unescapeHTML, ajax, xpath, addStyles
 window._lib = {
@@ -129,7 +134,7 @@ window._lib = {
         if (opts.contentType === 'application/x-www-form-urlencoded; charset=UTF-8') {
             xhr.send(_lib.toQS(opts.data));
         } else {
-            xhr.sendAsBinary(opts.data)
+            xhr.sendAsBinary(opts.data);
         }
     },
 
@@ -172,7 +177,7 @@ window._cc98 = function() {
 
     // 以下三个没有考虑被删除的帖子，因为在当前页解析的时候DisplayDel()和正常的发帖时间之类的会一起出现，导致匹配会乱掉
     // 因此引起的发米机发米楼层可能不精确的问题也没办法了……
-    var NAME_RE = /<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
+    var NAME_RE = /(?:name="\d+">| middle;">&nbsp;)\s*<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
     var ANNOUNCEID_RE = /<a name="(\d{2,})">/g; // 注意网页上<a name="1">之类的标签是作为#0的anchor出现的
     var POST_TIME_RE = /<\/a>\s*([^AP]*[AP]M)\s*<\/td>/g;
 
@@ -329,9 +334,9 @@ window._cc98 = function() {
             var data = [boundary,'\r\n',
                 'Content-Disposition: form-data; name="act"\r\n\r\nupload',
                 '\r\n',boundary,'\r\n',
-                'Content-Disposition: form-data; name="fname"\r\n\r\n',file.name,
+                'Content-Disposition: form-data; name="fname"\r\n\r\n',toUnicode(file.name),
                 '\r\n',boundary,'\r\n',
-                'Content-Disposition: form-data; name="file1"; filename="',file.name,'"\'\r\n',
+                'Content-Disposition: form-data; name="file1"; filename="',toUnicode(file.name),'"\r\n',
                 'Content-Type: ',file.type,'\r\n\r\n',
                 e.target.result,
                 '\r\n',boundary,'\r\n',
@@ -344,7 +349,7 @@ window._cc98 = function() {
                 'contentType': 'multipart/form-data; boundary='+boundary,
                 'data': data,
                 'success': callback
-            })
+            });
 
         }
         reader.readAsBinaryString(file);
@@ -470,7 +475,7 @@ var maxSubjectLength = 100;          // 主题框的最大输入长度(字节数
 ////////////////////////////////////////////////////////////////////////////////
 // 配置相关
 ////////////////////////////////////////////////////////////////////////////////
-var INITIAL_CONFIG = {
+var INITIAL_OPTIONS = {
     version: 0.1,                   // 脚本的版本号，便于后续升级时对配置做更改
 
     viewOriginalPost: true,         // 在引用中加入"查看原帖"
@@ -484,22 +489,22 @@ var INITIAL_CONFIG = {
     replyTail: ""                   // 小尾巴
 };
 
-var config = INITIAL_CONFIG;
+var options = INITIAL_OPTIONS;
 
 /*
-function loadConfig() {
-    config = JSON.parse(localStorage.getItem('reply_config'));
-    if (!config) {
-        config = INITIAL_CONFIG;
-        storeConfig();
+function loadoptions() {
+    options = JSON.parse(localStorage.getItem('reply_options'));
+    if (!options) {
+        options = INITIAL_OPTIONS;
+        storeoptions();
     }
 }
 
-function storeConfig() {
-    localStorage.setItem('reply_config', JSON.stringify(config));
+function storeoptions() {
+    localStorage.setItem('reply_options', JSON.stringify(options));
 }
 
-loadConfig();
+loadoptions();
 */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -575,8 +580,8 @@ function showExpressionList() {
         'position': 'relative',
         'background-color': '#fff',
         'z-index': 100,
-        'margin-top': '-23px',  // 比原表情的位置偏离一点点，以覆盖住后面表示被选中的虚线框
-        'margin-left': '-1px'
+        'margin-top': '-24px',  // 比原表情的位置偏离一点点，以覆盖住后面表示被选中的虚线框
+        'margin-left': '2px'
     });
 
     for (var i = 1; i <= 22; ++i) {
@@ -781,15 +786,15 @@ function reply() {
 function submit() {
     // 为空则添加默认回复
     if ($('#post_content').val() === '')
-        $('#post_content').val(config.defaultReplyContent);
+        $('#post_content').val(options.defaultReplyContent);
 
     // 添加小尾巴
-    if (config.replyTail) {
-        $('#post_content').val($('#post_content').val() + '\n' + config.replyTail);
+    if (options.replyTail) {
+        $('#post_content').val($('#post_content').val() + '\n' + options.replyTail);
     }
 
     // 相对链接
-    if (config.useRelativeURL) {
+    if (options.useRelativeURL) {
         $('#post_content').val(makeRelativeURL($('#post_content').val()));
     }
 
@@ -840,7 +845,7 @@ function showDialog() {
             '<table class="btn_bar">' +
                 '<tbody>' +
                     '<tr>' +
-                        '<td width="20%"><input type="button" id="submit_post" name="submit_post" class="soda_button" value="提交回复"></td>' +
+                        '<td width="20%"><button id="submit_post" class="soda_button">提交回复</button></td>' +
                         '<td width="80%"><span id="submitting_status"></span></td>' +
                     '</tr>' +
                 '</tbody>' +
@@ -876,7 +881,7 @@ function showDialog() {
             '<tbody>' +
                 '<tr>' +
                     '<td><input type="checkbox" id="image_autoshow" name="image_autoshow" value="autoshow"><label for="image_autoshow">直接显示图片</label></td>' +
-                    '<td><input type="button" id="confirm_upload" name="confirm_upload" class="soda_button" value="上传"></td>' +
+                    '<td><button id="confirm_upload" class="soda_button">上传</button></td>' +
                 '</tr>' +
             '</tbody>' +
         '</table>' +
@@ -895,7 +900,7 @@ function showDialog() {
 
     // 各种事件绑定
     $('#replybox_title').drags({"draggable": "#reply_dialog"});
-    $('#dialog_close_btn').click(function() { $('#reply_dialog').remove(); });
+    $('#dialog_close_btn').click(function() { $('#reply_dialog').remove(); $('#upload_panel').remove(); });
 
     $('#post_expression').click(showExpressionList);
 
@@ -928,19 +933,19 @@ function showDialog() {
 
     // 自动保存草稿
     setInterval(function() {
-        var remained = config.autoSaveInterval;  // 剩余时间
+        var remained = options.autoSaveInterval;  // 剩余时间
         return function() {
             remained -= 10;
             if (remained === 0) {
                 saveDraft();
-                remained = config.autoSaveInterval;
+                remained = options.autoSaveInterval;
             }
             $('#e_autosavecount').text(remained + ' 秒后自动保存草稿');
         }
     }(), 10000);    // 10s更改一次状态
 
     // 初始状态
-    $('#e_autosavecount').text(config.autoSaveInterval + ' 秒后自动保存草稿');
+    $('#e_autosavecount').text(options.autoSaveInterval + ' 秒后自动保存草稿');
     // 保存草稿
     $('#e_save').click(saveDraft);
     // 恢复数据
@@ -966,7 +971,7 @@ function showDialog() {
 function addQuoteURL(url, storey, quoteContent) {
     var insertIndex = quoteContent.indexOf('[/b]') + 4;
     var quoteURL = _cc98.formatURL(url, true).split('#')[0] + '#' + storey;
-    return quoteContent.substring(0, insertIndex) + '  [url=' + quoteURL + '][color=' + config.rtColor + ']' + config.rtString +
+    return quoteContent.substring(0, insertIndex) + '  [url=' + quoteURL + '][color=' + options.rtColor + ']' + options.rtString +
         '[/color][/url]' + quoteContent.substring(insertIndex);
 }
 
@@ -983,7 +988,7 @@ function addFastQuote(url, storey) {
         'success': function(html) {
             var quoteContent = _lib.unescapeHTML((/<textarea.*>([\s\S]*)<\/textarea>/ig).exec(html)[1]);
 
-            if (config.viewOriginalPost) {
+            if (options.viewOriginalPost) {
                 quoteContent = addQuoteURL(url, storey, quoteContent);
             }
 
@@ -1002,9 +1007,10 @@ function addMultiQuote(url, storey) {
     if (!post) return;
 
     _cc98.getPostContent(url, storey, function(content) {
-        quoteContent = '[quote][b]以下是引用[i]' + post.username + '在' + post.posttime + '[/i]的发言：[/b]\n' + content + '\n[/quote]\n';
+        quoteContent = '[quote][b]以下是引用[i]' + post.username.replace("匿名\d+", "匿名") + '在' + post.posttime + '[/i]的发言：[/b]\n'
+            + content + '\n[/quote]\n';
 
-        if (config.viewOriginalPost) {
+        if (options.viewOriginalPost) {
                 quoteContent = addQuoteURL(url, storey, quoteContent);
         }
 
@@ -1056,22 +1062,25 @@ function shortcutHandlers(evt) {
         $('#upload_panel').remove();
     }
 
-    // CTRL + ENTER 提交回复
-    if (evt.ctrlKey && evt.keyCode === 13) {
-        submit();
-    }
-
     // CTRL + SHIFT + 0-9 快速引用
     if (evt.ctrlKey && evt.shiftKey && evt.keyCode >= 48 && evt.keyCode <= 57) {
         addFastQuote(location.href, evt.keyCode-48);
     }
 }
 
+// 处理提交事件，似乎keyup的话很可能按不到，所以特地分离出来
+function submitShortcut(evt) {
+    // CTRL + ENTER 提交回复
+    if (evt.keyCode === 13 && evt.ctrlKey) {
+        submit();
+    }
+}
 
 addQuoteBtns();
 
 // 绑定快捷键
 $(document).keyup(shortcutHandlers);
+$(document).keydown(submitShortcut);
 
 _lib.addStyles(
     '#reply_dialog {' +
@@ -1119,8 +1128,10 @@ _lib.addStyles(
         'margin: 10px 0;' +
     '}' +
     '#post_expression {' +
+        'display: inline-block;' +
         'height: 15px;' +
         'width: 15px;' +
+        'margin: 3px;' +
         'vertical-align: middle;' +
     '}' +
     '#post_subject {' +
