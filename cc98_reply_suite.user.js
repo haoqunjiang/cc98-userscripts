@@ -981,7 +981,7 @@ function addFastQuote(url, storey) {
     $.ajax({
         'url': replyurl,
         'success': function(html) {
-            var quoteContent = (/<textarea.*>([\s\S]*)<\/textarea>/ig).exec(html)[1];
+            var quoteContent = _lib.unescapeHTML((/<textarea.*>([\s\S]*)<\/textarea>/ig).exec(html)[1]);
 
             if (config.viewOriginalPost) {
                 quoteContent = addQuoteURL(url, storey, quoteContent);
