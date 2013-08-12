@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.2.5
+// @version        0.3.0
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -15,7 +15,7 @@
 // 功能：快速回复、快速引用、10s后自动读秒回复、多重引用、查看原帖、默认回复、小尾巴、自动保存草稿、@用户、多文件上传、相对链接、简单的UBB编辑器、自定义表情
 
 // todo:
-// @，提示输入内容的最大长度，自定义表情
+// 自定义快捷键、@，提示输入内容的最大长度，自定义表情、允许将心灵添加为例外
 
 // 自己写的cc98 JavaScript SDK
 // _lib对象是各种辅助函数，比如解析querystring，ajax调用，xpath等
@@ -479,36 +479,39 @@ var maxSubjectLength = 100;          // 主题框的最大输入长度(字节数
 // 配置相关
 ////////////////////////////////////////////////////////////////////////////////
 var INITIAL_OPTIONS = {
-    version: '0.2.5',                   // 脚本的版本号，便于后续升级时对配置做更改
-
-    viewOriginalPost: true,         // 在引用中加入"查看原帖"
-    rtString: '➤➤➤➤➤',          // 原帖链接的提示文字
-    rtColor: 'seagreen',            //「查看原帖」的颜色
-    //blockQuotedEmotions: false,   // 是否屏蔽引用里的表情和图片（暂未实现）
-
+    version: '0.3.0',               // 脚本的版本号，便于后续升级时对配置做更改
     autoSaveInterval: 30,           // 自动保存间隔(秒)，必须是10的倍数
-    useRelativeURL: true,           // 使用相对链接
+
+    promptString: '>>>>查看原帖',   // 原帖链接的提示文字
+    promptColor: 'royalblue',       //「查看原帖」的颜色
+
+    replyTail: "",                  // 小尾巴
     defaultReplyContent: '\n',      // 文本框为空时的默认回复内容
-    replyTail: ""                   // 小尾巴
+
+    useRelativeURL: true,           // 使用相对链接
+    disableInXinlin: false          // 在心灵禁用这些设置
 };
 
-var options = INITIAL_OPTIONS;
+var options;
 
-/*
-function loadoptions() {
+// 载入设置
+function loadOptions() {
     options = JSON.parse(localStorage.getItem('reply_options'));
+
     if (!options) {
         options = INITIAL_OPTIONS;
-        storeoptions();
     }
+
+    options['version'] = INITIAL_OPTIONS['version'];
+    storeOptions();
 }
 
-function storeoptions() {
+// 将修改后的设置存回到localStorage
+function storeOptions() {
     localStorage.setItem('reply_options', JSON.stringify(options));
 }
 
-loadoptions();
-*/
+loadOptions();
 
 ////////////////////////////////////////////////////////////////////////////////
 // 以下是界面无关的代码
@@ -532,7 +535,7 @@ $.fn.drags = function(opt) {
         draggable: "",  // 被拖动的对象（默认为this）
         cursor: "move",
         draggableClass: "draggable",
-        preventDefault: true
+        preventDefault: false
     }, opt);
 
     var $draggable = (opt.draggable === "") ? this : $(document).find(opt.draggable);
@@ -565,6 +568,29 @@ $.fn.drags = function(opt) {
 ////////////////////////////////////////////////////////////////////////////////
 // 以下都是跟界面有关的函数
 ////////////////////////////////////////////////////////////////////////////////
+
+// 显示当前设置
+function showOptions() {
+    $('#prompt-string').val(options.promptString);
+    $('#prompt-color').val(options.promptColor);
+    $('#reply-tail').val(options.replyTail);
+    $('#default-reply-content').val(options.defaultReplyContent);
+    $('#use-relative-link').prop('checked', options.useRelativeURL);
+    $('#disable-in-xinlin').prop('checked', options.disableInXinlin);
+}
+
+// 保存设置
+function saveOptions() {
+    options.promptString = $('#prompt-string').val();
+    options.promptColor = $('#prompt-color').val();
+    options.replyTail = $('#reply-tail').val();
+    options.defaultReplyContent = $('#default-reply-content').val();
+    options.useRelativeURL = $('#use-relative-link').prop('checked');
+    options.disableInXinlin = $('#disable-in-xinlin').prop('checked');
+
+    storeOptions();
+    $('#reply_options').remove();
+}
 
 // 显示发帖状态（成功、失败、10s等）
 function showStatus(status, color) {
@@ -630,7 +656,7 @@ function insertContent(content) {
     elem.selectionStart = elem.selectionEnd = start + content.length;
 }
 
-// 显示表情列表（待完成）
+// 显示表情列表（待完成，暂时只能显示98默认表情）
 function toggleEmotions() {
     if ($('#emot_panel').length) {
         $('#emot_panel').remove();
@@ -814,6 +840,7 @@ function showDialog() {
         '<li id="dialog_header">' +
             '<h3 id="replybox_title" class="box_title">' +
                 '参与/回复主题' +
+                '<a id="show_options" href="javascript:void(0);">[设置]</a>' +
                 '<span><a id="dialog_close_btn" class="close_btn" title="关闭"></a></span>' +
             '</h3>' +
         '</li>' +
@@ -891,28 +918,86 @@ function showDialog() {
         '<div id="upload_msg"></div>' +
     '</div>';
 
+    var reply_options_html = 
+    '<div id="reply_options">' +
+    '<form id="options_form">' +
+        '<lengend>' +
+            '<h3 id="options_header" class="box_title">' +
+                '回复设置' +
+                '<span><a id="options_close_btn" class="close_btn" title="关闭"></a></span>' +
+            '</h3>' +
+        '</lengend>' +
+        '<div>' +
+            '<label for="prompt-string" class="label-left">原帖链接提示文字</label>' +
+            '<input type="text" id="prompt-string">' +
+        '</div>' +
+        '<div>' +
+            '<label for="prompt-color" class="label-left">原帖链接文字颜色</label>' +
+            '<input type="text" id="prompt-color">' +
+        '</div>' +
+        '<div>' +
+            '<label for="reply-tail" class="label-left">回复后缀</label>' +
+            '<textarea id="reply-tail"></textarea>' +
+        '</div>' +
+        '<div>' +
+            '<label for="default-reply-content" class="label-left">默认回复</label>' +
+            '<textarea id="default-reply-content"></textarea>' +
+        '</div>' +
+        '<br>' +
+        '<div>' +
+            '<input type="checkbox" id="use-relative-link">' +
+            '<label for="use-relative-link" >使用相对链接</label>' +
+        '</div>' +
+        '<div>' +
+            '<input type="checkbox" id="disable-in-xinlin">' +
+            '<label for="disable-in-xinlin" >在心灵之约禁用以上设置</label>' +
+        '</div>' +
+        '<br>' +
+        '<input type="button" id="save_reply_options" class="soda_button" value="保存设置">' +
+    '</form>' +
+    '</div>';
+
     if ($('#reply_dialog').length) return;
     $('body').append(reply_dialog_html);
 
-    var reply_dialog = $('#reply_dialog');
     // 居中（可见区域内绝对居中，不是固定居中，考虑到上传文件数量可能特别多超过可见范围）
-    reply_dialog.css({
-        'top': (document.body.clientHeight - reply_dialog.height()) / 2 + $(window).scrollTop(),
-        'left': (document.body.clientWidth - reply_dialog.width()) / 2 + $(window).scrollLeft()
+    $('#reply_dialog').css({
+        'top': (document.body.clientHeight - $('#reply_dialog').height()) / 2 + $(window).scrollTop(),
+        'left': (document.body.clientWidth - $('#reply_dialog').width()) / 2 + $(window).scrollLeft()
     });
 
     // 各种事件绑定
     $('#replybox_title').drags({"draggable": "#reply_dialog"});
     $('#dialog_close_btn').click(function() { $('#reply_dialog').remove(); $('#upload_panel').remove(); });
 
+    // 显示设置界面
+    $('#show_options').click(function() {
+        if($('#reply_options').length) return;
+
+        $('body').append(reply_options_html);
+        $('#options_header').drags({'draggable': '#reply_options'});
+        $('#options_close_btn').click(function() { $('#reply_options').remove(); });
+
+        $('#reply_options').css({
+            'top': (document.body.clientHeight - $('#reply_options').height()) / 2 + $(window).scrollTop(),
+            'left': (document.body.clientWidth - $('#reply_options').width()) / 2 + $(window).scrollLeft()
+        });
+
+        // 显示当前设置
+        showOptions();
+
+        $('#save_reply_options').click(saveOptions);
+    });
+
     $('#post_expression').click(showExpressionList);
 
     // UBB编辑器
-    $('#bold').click(function() { addUBBCode('b') });
+    $('#bold').click(function() { addUBBCode('b'); });
     $('#strikethrough').click(function() { addUBBCode('del') });
 
     // 表情列表
     $('#add_emotions').click(toggleEmotions);
+
 
     // 显示上传面板，添加与其相关的事件绑定
     $('#add_attachments').click(function() {
@@ -922,14 +1007,14 @@ function showDialog() {
         $('#upload_title').drags({'draggable': '#upload_panel'});
         $('#upload_close_btn').click(function() { $('#upload_panel').remove(); })
         // 居中显示
-        var upload_panel = $('#upload_panel');
-        upload_panel.css({
-            'top': (document.body.clientHeight - upload_panel.height()) / 2 + $(window).scrollTop(),
-            'left': (document.body.clientWidth - upload_panel.width()) / 2 + $(window).scrollLeft()
+        $('#upload_panel').css({
+            'top': (document.body.clientHeight - $('#upload_panel').height()) / 2 + $(window).scrollTop(),
+            'left': (document.body.clientWidth - $('#upload_panel').width()) / 2 + $(window).scrollLeft()
         });
 
         $('#confirm_upload').click(uploadFiles);
     });
+
 
     // 点击输入框时，隐藏发帖心情列表
     $('#post_content').click(function() { $('#expression_list').remove(); });
@@ -974,7 +1059,7 @@ function showDialog() {
 function addQuoteURL(url, storey, quoteContent) {
     var insertIndex = quoteContent.indexOf('[/b]') + 4;
     var quoteURL = _cc98.formatURL(url, true).split('#')[0] + '#' + storey;
-    return quoteContent.substring(0, insertIndex) + '  [url=' + quoteURL + '][color=' + options.rtColor + ']' + options.rtString +
+    return quoteContent.substring(0, insertIndex) + '  [url=' + quoteURL + '][color=' + options.promptColor + ']' + options.promptString +
         '[/color][/url]' + quoteContent.substring(insertIndex);
 }
 
@@ -991,7 +1076,8 @@ function addFastQuote(url, storey) {
         'success': function(html) {
             var quoteContent = _lib.unescapeHTML((/<textarea.*>([\s\S]*)<\/textarea>/ig).exec(html)[1]);
 
-            if (options.viewOriginalPost) {
+
+            if (!options.disableInXinlin || _lib.parseQS(location.search)['boardid'] !== '182') {
                 quoteContent = addQuoteURL(url, storey, quoteContent);
             }
 
@@ -1013,7 +1099,7 @@ function addMultiQuote(url, storey) {
         quoteContent = '[quote][b]以下是引用[i]' + post.username.replace("匿名\d+", "匿名") + '在' + post.posttime + '[/i]的发言：[/b]\n'
             + content + '\n[/quote]\n';
 
-        if (options.viewOriginalPost) {
+        if (!options.disableInXinlin || _lib.parseQS(location.href)['boardid'] !== '182') {
                 quoteContent = addQuoteURL(url, storey, quoteContent);
         }
 
@@ -1053,9 +1139,10 @@ function addQuoteBtns() {
 }
 
 // 处理各种键盘快捷键
+// 似乎先处理keyCode再处理ctrlKey比较灵敏
 function shortcutHandlers(evt) {
     // CTRL + M 打开弹出回复框
-    if (evt.ctrlKey && evt.keyCode === 77) {
+    if (evt.keyCode === 77 && evt.ctrlKey) {
         showDialog();
     }
 
@@ -1066,27 +1153,24 @@ function shortcutHandlers(evt) {
     }
 
     // CTRL + SHIFT + 0-9 快速引用
-    if (evt.ctrlKey && evt.shiftKey && evt.keyCode >= 48 && evt.keyCode <= 57) {
+    if (evt.keyCode >= 48 && evt.keyCode <= 57 && evt.ctrlKey && evt.shiftKey) {
         addFastQuote(location.href, evt.keyCode-48);
     }
-}
 
-// 处理提交事件，似乎keyup的话很可能按不到，所以特地分离出来
-function submitShortcut(evt) {
     // CTRL + ENTER 提交回复
     if (evt.keyCode === 13 && evt.ctrlKey) {
         submit();
     }
 }
 
+// 给界面添加图标
 addQuoteBtns();
 
 // 绑定快捷键
 $(document).keyup(shortcutHandlers);
-$(document).keydown(submitShortcut);
 
 _lib.addStyles(
-    '#reply_dialog {' +
+    '#reply_dialog, #reply_options {' +
         'color: #222;' +
         'background-color: white;' +
         'font: 12px/1.4 ubuntu, "Lucida Grande", "Hiragino Sans GB W3", "Microsoft Yahei", sans-serif;' +
@@ -1097,7 +1181,6 @@ _lib.addStyles(
         'box-shadow: rgba(0, 0, 0, 0.4) 0 0 20px;' +
         'padding: 10px;' +
         'margin: 0 auto;' +
-        'opacity: 1;' +
     '}' +
     '' +
     '#reply_dialog ul{' +
@@ -1126,6 +1209,14 @@ _lib.addStyles(
     '}' +
     '.close_btn:hover { background-position: 0 -20px; }' +
     '' +
+    '#show_options {' +
+        'color: #fff;' +
+        'display: inline-block;' +
+        'margin-left: 5px;' +
+        'padding: 0 15px;' +
+        'font-size: 12px;' +
+    '}' +
+    '#replybox_title:hover a {color: #222;}' +
     '#reply_dialog #subject_line{' +
         'height: 20px;' +
         'margin: 10px 0;' +
@@ -1320,6 +1411,27 @@ _lib.addStyles(
         'display: inline-block;' +
         'vertical-align: middle;' +
         'margin: 0 5px;' +
+    '}' +
+    '#reply_options {' +
+        'border: 0;' +
+        'width: 450px;' +
+    '}' +
+    '.label-left {' +
+        'display: inline-block;' +
+        'width: 120px;' +
+    '}' +
+    '#reply_options input[type="text"], #reply_options textarea {' +
+        'width: 300px;' +
+        'height: 20px;' +
+        'font: inherit;' +
+    '}' +
+    '#reply_options textarea {' +
+        'height: 40px;' +
+        'resize: vertical;' +
+    '}' +
+    '#reply_options input[type="checkbox"] {' +
+        'margin: 0 2px 2px 0;' +
+        'vertical-align: middle;' +
     '}');
 
 
