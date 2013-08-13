@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.3.0
+// @version        0.3.2
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -10,19 +10,15 @@
 // @run-at         document-end
 // ==/UserScript==
 
-// 注意，查看原帖的链接默认在新选项卡打开
-
-// 功能：快速回复、快速引用、10s后自动读秒回复、多重引用、查看原帖、默认回复、小尾巴、自动保存草稿、@用户、多文件上传、相对链接、简单的UBB编辑器、自定义表情
-
 // todo:
-// 自定义快捷键、@，提示输入内容的最大长度，自定义表情、允许将心灵添加为例外
+// 自定义快捷键、@，提示输入内容的最大长度，自定义表情
+
+// 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯▽╰)╭）
+// 而index表示楼层的序号，0是第一楼，1是第二楼……
 
 // 自己写的cc98 JavaScript SDK
 // _lib对象是各种辅助函数，比如解析querystring，ajax调用，xpath等
 // _cc98对象中是各种98相关的函数，比如发米、回帖、站短、解析页面等
-
-// 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯▽╰)╭）
-// 而index表示楼层的序号，0是第一楼，1是第二楼……
 (function() {
 
 // Chrome 没有sendAsBinary函数，这里是一个实现
@@ -163,7 +159,7 @@ window._lib = {
     }
 }
 
-// 98相关的函数接口
+// 98相关的函数接口，这个脚本中fami和postCount这两个函数都没用到
 // fami, reply, sendPM, upload, getPostContent, parseTopicPage, postCount, pageCount, formatURL
 window._cc98 = function() {
 
@@ -465,6 +461,7 @@ window._cc98 = function() {
 
     return this;
 }();
+
 })();
 
 
@@ -479,30 +476,33 @@ var maxSubjectLength = 100;          // 主题框的最大输入长度(字节数
 // 配置相关
 ////////////////////////////////////////////////////////////////////////////////
 var INITIAL_OPTIONS = {
-    version: '0.3.0',               // 脚本的版本号，便于后续升级时对配置做更改
+    version: '0.3.2',               // 脚本的版本号，便于后续升级时对配置做更改
     autoSaveInterval: 30,           // 自动保存间隔(秒)，必须是10的倍数
 
-    promptString: '>>>>查看原帖',   // 原帖链接的提示文字
+    promptString: '>>>查看原帖',   // 原帖链接的提示文字
     promptColor: 'royalblue',       //「查看原帖」的颜色
 
     replyTail: "",                  // 小尾巴
     defaultReplyContent: '\n',      // 文本框为空时的默认回复内容
 
     useRelativeURL: true,           // 使用相对链接
-    disableInXinlin: false          // 在心灵禁用这些设置
+    disableInXinlin: false,         // 在心灵禁用这些设置
+    showFastReplyButton: true       // 显示快速回复按钮
 };
 
-var options;
+var options = {};
 
 // 载入设置
 function loadOptions() {
     options = JSON.parse(localStorage.getItem('reply_options'));
 
-    if (!options) {
-        options = INITIAL_OPTIONS;
+    options['version'] = INITIAL_OPTIONS['version'];
+    for (var prop in INITIAL_OPTIONS) {
+        if (options[prop] === undefined) {
+            options[prop] = INITIAL_OPTIONS[prop];
+        }
     }
 
-    options['version'] = INITIAL_OPTIONS['version'];
     storeOptions();
 }
 
@@ -577,6 +577,7 @@ function showOptions() {
     $('#default-reply-content').val(options.defaultReplyContent);
     $('#use-relative-link').prop('checked', options.useRelativeURL);
     $('#disable-in-xinlin').prop('checked', options.disableInXinlin);
+    $('#show-fast-reply-button').prop('checked', options.showFastReplyButton);
 }
 
 // 保存设置
@@ -587,6 +588,7 @@ function saveOptions() {
     options.defaultReplyContent = $('#default-reply-content').val();
     options.useRelativeURL = $('#use-relative-link').prop('checked');
     options.disableInXinlin = $('#disable-in-xinlin').prop('checked');
+    options.showFastReplyButton = $('#show-fast-reply-button').prop('checked');
 
     storeOptions();
     $('#reply_options').remove();
@@ -833,129 +835,138 @@ function submit() {
 
 // 显示回复面板，添加与其相关的各种事件绑定
 function showDialog() {
-    var reply_dialog_html = 
-    '<div id="reply_dialog">' +
-    '<form id="replyform">' +
-    '<ul id="replytable"width="100%">' +
-        '<li id="dialog_header">' +
-            '<h3 id="replybox_title" class="box_title">' +
-                '参与/回复主题' +
-                '<a id="show_options" href="javascript:void(0);">[设置]</a>' +
-                '<span><a id="dialog_close_btn" class="close_btn" title="关闭"></a></span>' +
-            '</h3>' +
-        '</li>' +
-    '' +
-        '<li id="subject_line" class="clearfix">' +
-            '<label for="post_subject"><a id="post_expression" href="javascript:void(0);"><img src="http://www.cc98.org/face/face7.gif"></a></label>' +
-            '<input type="text" id="post_subject" name="post_subject">' +
-        '</li>' +
-    '' +
-        '<li>' +
-            '<div id="editor">' +
-                '<div id="e_control">' +
-                    '<a id="add_emotions" title="表情" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://www.cc98.org/emot/simpleemot/emot88.gif"></a>' +
-                    '<a id="bold" title="加粗" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22333264497.gif"></a>' +
-                    '<a id="strikethrough" title="删除线" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22525420119.png"></a>' +
-                    '<a id="add_attachments" href="javascript:void(0);">| 添加附件</a>' +
-                '</div>' +
-    '' +
-                '<textarea id="post_content" role="textbox" aria-multiline="true"></textarea>' +
-    '' +
-                '<div id="e_statusbar">' +
-                    '<span id="e_tip"></span>' +
-                    '<span id="e_autosavecount"></span>' +
-                    '<a id="e_save" href="javascript:void(0);">保存草稿</a>' +
-                    ' | ' +
-                    '<a id="e_recover" href="javascript:void(0);">恢复数据</a>' +
-                '</div>' +
-            '</div>' +
-        '</li>' +
-    '' +
-        '<li>' +
-            '<table class="btn_bar">' +
-                '<tbody>' +
-                    '<tr>' +
-                        '<td width="20%"><input type="button" id="submit_post" class="soda_button" value="提交回复"></td>' +
-                        '<td width="80%"><span id="submitting_status"></span></td>' +
-                    '</tr>' +
-                '</tbody>' +
-            '</table>' +
-        '</li>' +
-    '' +
-    '</ul>' +
-    '</form>' +
-    '' +
-    '<table id="attach_table">' +
-        '<thead>' +
-            '<tr>' +
-                '<th id="filenames" width="50%">点击文件名添加到帖子中（点此全部加入）</th>' +
-                '<th width="20%">大小</th>' +
-                '<th width="30%">状态</th>' +
-            '</tr>' +
-        '</thead>' +
-        '<tbody id="attach_list">' +
-        '</tbody>' +
-    '</table>' +
-    '' +
-    '</div>';
+    var reply_dialog_html = [
+        '<div id="reply_dialog">',
+        '<form id="replyform">',
+        '<ul id="replytable"width="100%">',
+            '<li id="dialog_header">',
+                '<h3 id="replybox_title" class="box_title">',
+                    '参与/回复主题',
+                    '<a id="show_options" href="javascript:void(0);">[设置]</a>',
+                    '<span><a id="dialog_close_btn" class="close_btn" title="关闭"></a></span>',
+                '</h3>',
+            '</li>',
 
-    var upload_panel_html =
-    '<div id="upload_panel">' +
-        '<h3 id="upload_title" class="box_title">' +
-            '添加附件' +
-            '<span><a id="upload_close_btn" class="close_btn" title="关闭"></a></span>' +
-        '</h3>' +
-        '<input type="file" id="files" name="files[]" multiple>' +
-        '<br>' +
-        '<table class="btn_bar" width="100%">' +
-            '<tbody>' +
-                '<tr>' +
-                    '<td><input type="checkbox" id="image_autoshow" name="image_autoshow" value="autoshow"><label for="image_autoshow">直接显示图片</label></td>' +
-                    '<td><input type="button" id="confirm_upload" class="soda_button" value="上传"></td>' +
-                '</tr>' +
-            '</tbody>' +
-        '</table>' +
-        '<div id="upload_msg"></div>' +
-    '</div>';
+            '<li id="subject_line" class="clearfix">',
+                '<label for="post_subject"><a id="post_expression" href="javascript:void(0);"><img src="http://www.cc98.org/face/face7.gif"></a></label>',
+                '<input type="text" id="post_subject" name="post_subject">',
+            '</li>',
 
-    var reply_options_html = 
-    '<div id="reply_options">' +
-    '<form id="options_form">' +
-        '<lengend>' +
-            '<h3 id="options_header" class="box_title">' +
-                '回复设置' +
-                '<span><a id="options_close_btn" class="close_btn" title="关闭"></a></span>' +
-            '</h3>' +
-        '</lengend>' +
-        '<div>' +
-            '<label for="prompt-string" class="label-left">原帖链接提示文字</label>' +
-            '<input type="text" id="prompt-string">' +
-        '</div>' +
-        '<div>' +
-            '<label for="prompt-color" class="label-left">原帖链接文字颜色</label>' +
-            '<input type="text" id="prompt-color">' +
-        '</div>' +
-        '<div>' +
-            '<label for="reply-tail" class="label-left">回复后缀</label>' +
-            '<textarea id="reply-tail"></textarea>' +
-        '</div>' +
-        '<div>' +
-            '<label for="default-reply-content" class="label-left">默认回复</label>' +
-            '<textarea id="default-reply-content"></textarea>' +
-        '</div>' +
-        '<br>' +
-        '<div>' +
-            '<input type="checkbox" id="use-relative-link">' +
-            '<label for="use-relative-link" >使用相对链接</label>' +
-        '</div>' +
-        '<div>' +
-            '<input type="checkbox" id="disable-in-xinlin">' +
-            '<label for="disable-in-xinlin" >在心灵之约禁用以上设置</label>' +
-        '</div>' +
-        '<br>' +
-        '<input type="button" id="save_reply_options" class="soda_button" value="保存设置">' +
-    '</form>' +
-    '</div>';
+            '<li>',
+                '<div id="editor">',
+                    '<div id="e_control">',
+                        '<a id="add_emotions" title="表情" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://www.cc98.org/emot/simpleemot/emot88.gif"></a>',
+                        '<a id="bold" title="加粗" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22333264497.gif"></a>',
+                        '<a id="strikethrough" title="删除线" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22525420119.png"></a>',
+                        '<a id="add_attachments" href="javascript:void(0);">| 添加附件</a>',
+                    '</div>',
+
+                    '<textarea id="post_content" role="textbox" aria-multiline="true"></textarea>',
+
+                    '<div id="e_statusbar">',
+                        '<span id="e_tip"></span>',
+                        '<span id="e_autosavecount"></span>',
+                        '<a id="e_save" href="javascript:void(0);">保存草稿</a>',
+                        ' | ',
+                        '<a id="e_recover" href="javascript:void(0);">恢复数据</a>',
+                    '</div>',
+                '</div>',
+            '</li>',
+
+            '<li>',
+                '<table class="btn_bar">',
+                    '<tbody>',
+                        '<tr>',
+                            '<td width="20%"><input type="button" id="submit_post" class="soda_button" value="提交回复"></td>',
+                            '<td width="80%"><span id="submitting_status"></span></td>',
+                        '</tr>',
+                    '</tbody>',
+                '</table>',
+            '</li>',
+
+        '</ul>',
+        '</form>',
+
+        '<table id="attach_table">',
+            '<thead>',
+                '<tr>',
+                    '<th id="filenames" width="50%">点击文件名添加到帖子中（点此全部加入）</th>',
+                    '<th width="20%">大小</th>',
+                    '<th width="30%">状态</th>',
+                '</tr>',
+            '</thead>',
+            '<tbody id="attach_list">',
+            '</tbody>',
+        '</table>',
+
+        '</div>'
+    ].join('');
+
+    var upload_panel_html = [
+        '<div id="upload_panel">',
+            '<h3 id="upload_title" class="box_title">',
+                '添加附件',
+                '<span><a id="upload_close_btn" class="close_btn" title="关闭"></a></span>',
+            '</h3>',
+            '<input type="file" id="files" name="files[]" multiple>',
+            '<br>',
+            '<table class="btn_bar" width="100%">',
+                '<tbody>',
+                    '<tr>',
+                        '<td><input type="checkbox" id="image_autoshow" name="image_autoshow" value="autoshow"><label for="image_autoshow">直接显示图片</label></td>',
+                        '<td><input type="button" id="confirm_upload" class="soda_button" value="上传"></td>',
+                    '</tr>',
+                '</tbody>',
+            '</table>',
+            '<div id="upload_msg"></div>',
+        '</div>'
+    ].join('');
+
+    // 回复设置的表单没有用fieldset，因为用了之后关闭按钮的摆放就显得很尴尬……
+    var reply_options_html = [
+        '<div id="reply_options">',
+        '<form id="options_form">',
+            '<legend>',
+                '<h3 id="options_header" class="box_title">',
+                    '回复设置',
+                    '<span><a id="options_close_btn" class="close_btn" title="关闭"></a></span>',
+                '</h3>',
+            '</legend>',
+            '<div>',
+                '<label for="prompt-string" class="label-left">原帖链接提示文字</label>',
+                '<input type="text" id="prompt-string">',
+            '</div>',
+            '<div>',
+                '<label for="prompt-color" class="label-left">原帖链接文字颜色</label>',
+                '<input type="text" id="prompt-color">',
+            '</div>',
+            '<div>',
+                '<label for="reply-tail" class="label-left">回复后缀</label>',
+                '<textarea id="reply-tail"></textarea>',
+            '</div>',
+            '<div>',
+                '<label for="default-reply-content" class="label-left">默认回复</label>',
+                '<textarea id="default-reply-content"></textarea>',
+            '</div>',
+            '<br>',
+            '<div>',
+                '<input type="checkbox" id="use-relative-link">',
+                '<label for="use-relative-link" >使用相对链接</label>',
+            '</div>',
+            '<div>',
+                '<input type="checkbox" id="disable-in-xinlin">',
+                '<label for="disable-in-xinlin" >在心灵之约禁用以上设置</label>',
+            '</div>',
+            '<div>',
+                '<input type="checkbox" id="show-fast-reply-button">',
+                '<label for="show-fast-reply-button">显示快速回复按钮</label>',
+            '</div>',
+            '<br>',
+            '<input type="button" id="save_reply_options" class="soda_button" value="保存设置">',
+        '</form>',
+        '</div>'
+    ].join('');
+
 
     if ($('#reply_dialog').length) return;
     $('body').append(reply_dialog_html);
@@ -965,10 +976,6 @@ function showDialog() {
         'top': (document.body.clientHeight - $('#reply_dialog').height()) / 2 + $(window).scrollTop(),
         'left': (document.body.clientWidth - $('#reply_dialog').width()) / 2 + $(window).scrollLeft()
     });
-
-    // 各种事件绑定
-    $('#replybox_title').drags({"draggable": "#reply_dialog"});
-    $('#dialog_close_btn').click(function() { $('#reply_dialog').remove(); $('#upload_panel').remove(); });
 
     // 显示设置界面
     $('#show_options').click(function() {
@@ -989,21 +996,11 @@ function showDialog() {
         $('#save_reply_options').click(saveOptions);
     });
 
-    $('#post_expression').click(showExpressionList);
-
-    // UBB编辑器
-    $('#bold').click(function() { addUBBCode('b'); });
-    $('#strikethrough').click(function() { addUBBCode('del') });
-
-    // 表情列表
-    $('#add_emotions').click(toggleEmotions);
-
-
-    // 显示上传面板，添加与其相关的事件绑定
+    // 显示上传界面
     $('#add_attachments').click(function() {
         if ($('#upload_panel').length) return;
 
-        $('body').append(upload_panel_html);  // 这样每次都会新建一个div而不是重复使用之前的那个
+        $('body').append(upload_panel_html);
         $('#upload_title').drags({'draggable': '#upload_panel'});
         $('#upload_close_btn').click(function() { $('#upload_panel').remove(); })
         // 居中显示
@@ -1015,12 +1012,8 @@ function showDialog() {
         $('#confirm_upload').click(uploadFiles);
     });
 
-
-    // 点击输入框时，隐藏发帖心情列表
-    $('#post_content').click(function() { $('#expression_list').remove(); });
-
     // 自动保存草稿
-    setInterval(function() {
+    var autoSaveIntervalId = setInterval(function() {
         var remained = options.autoSaveInterval;  // 剩余时间
         return function() {
             remained -= 10;
@@ -1031,6 +1024,22 @@ function showDialog() {
             $('#e_autosavecount').text(remained + ' 秒后自动保存草稿');
         }
     }(), 10000);    // 10s更改一次状态
+
+    // 各种事件绑定
+    $('#replybox_title').drags({"draggable": "#reply_dialog"});
+    $('#dialog_close_btn').click(function() { $('#reply_dialog').remove(); $('#upload_panel').remove(); clearInterval(autoSaveIntervalId); });
+
+    $('#post_expression').click(showExpressionList);
+
+    // UBB编辑器
+    $('#bold').click(function() { addUBBCode('b'); });
+    $('#strikethrough').click(function() { addUBBCode('del') });
+
+    // 表情列表
+    $('#add_emotions').click(toggleEmotions);
+
+    // 点击输入框时，隐藏发帖心情列表
+    $('#post_content').click(function() { $('#expression_list').remove(); });
 
     // 初始状态
     $('#e_autosavecount').text(options.autoSaveInterval + ' 秒后自动保存草稿');
@@ -1053,7 +1062,6 @@ function showDialog() {
     // 打开回复时将鼠标焦点定到输入框
     $('#post_content').focus();
 }
-
 
 // 给引用加上查看原帖链接
 function addQuoteURL(url, storey, quoteContent) {
@@ -1100,7 +1108,7 @@ function addMultiQuote(url, storey) {
             + content + '\n[/quote]\n';
 
         if (!options.disableInXinlin || _lib.parseQS(location.href)['boardid'] !== '182') {
-                quoteContent = addQuoteURL(url, storey, quoteContent);
+            quoteContent = addQuoteURL(url, storey, quoteContent);
         }
 
         $('#post_content').val( $('#post_content').val() + quoteContent);
@@ -1108,8 +1116,8 @@ function addMultiQuote(url, storey) {
 }
 
 // 给页面加上引用按钮
-function addQuoteBtns() {
-    // 插入引用按钮
+function addButtons() {
+
     // 获取所有「引用」链接
     $('a[href*="reannounce.asp"]').each(function(index, ele) {
         link = $(this);
@@ -1117,7 +1125,7 @@ function addQuoteBtns() {
         // 如果是「答复」则跳过
         if (link.attr('href').indexOf('setfilter') > 0) return;
 
-        // 如果在完整版中没有图片作为子节点，或者在简版中文字内容不是[引用]
+        // 如果在完整版中没有引用图片作为子节点，或者在简版中文字内容不是[引用]，就不是真正的引用链接
         // 考虑到简版中纯文字的话还可能伪造[引用]链接，所以再加上对它父节点的判断
         if (link.children().first().attr('src') !== 'pic/reply.gif'
             && (link.text() !== '[引用]' || link.parent().get(0).className !== 'usernamedisp'))
@@ -1136,6 +1144,12 @@ function addQuoteBtns() {
         var storey = (index === 9) ? 0 : (index + 1);
         $(this).click(function() { addMultiQuote(location.href, storey); });
     });
+
+    // 显示快速回复按钮
+    if (options.showFastReplyButton) {
+        $('body').append('<div><a id="fast_reply" title="快速回复"></a></div>');
+        $('#fast_reply').click(showDialog);
+    }
 }
 
 // 处理各种键盘快捷键
@@ -1156,7 +1170,9 @@ function shortcutHandlers(evt) {
     if (evt.keyCode >= 48 && evt.keyCode <= 57 && evt.ctrlKey && evt.shiftKey) {
         addFastQuote(location.href, evt.keyCode-48);
     }
+}
 
+function submitShortcut(evt) {
     // CTRL + ENTER 提交回复
     if (evt.keyCode === 13 && evt.ctrlKey) {
         submit();
@@ -1164,277 +1180,294 @@ function shortcutHandlers(evt) {
 }
 
 // 给界面添加图标
-addQuoteBtns();
+addButtons();
 
 // 绑定快捷键
 $(document).keyup(shortcutHandlers);
+// 似乎很多快捷键必须是keydown才足够灵敏，只好分离出来
+$(document).keydown(submitShortcut);
 
-_lib.addStyles(
-    '#reply_dialog, #reply_options {' +
-        'color: #222;' +
-        'background-color: white;' +
-        'font: 12px/1.4 ubuntu, "Lucida Grande", "Hiragino Sans GB W3", "Microsoft Yahei", sans-serif;' +
-        'width: 650px;' +
-        'position: absolute;' +
-        'border: 5px solid transparent;' +
-        'border-radius: 5px;' +
-        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 20px;' +
-        'padding: 10px;' +
-        'margin: 0 auto;' +
-    '}' +
-    '' +
-    '#reply_dialog ul{' +
-        'display: block;' +
-        'list-style: none;' +
-        'padding-left: 0;' +
-        'margin: 0;' +
-    '}' +
-    '' +
-    '.clearfix { clear: both; }' +
-    '' +
-  '.box_title {' +
-        'cursor: move;' +
-        'font-size: 16px;' +
-        'line-height: 20px;' +
-        'margin: 0 0 20px 0;' +
-        'color: #6595D6;' +
-        'text-align: left;' +
-    '}' +
-    '.close_btn {' +
-        'cursor: pointer;' +
-        'width: 20px;' +
-        'height: 20px;' +
-        'background: url("http://file.cc98.org/uploadfile/2013/8/7/1954562236.gif");' +
-        'float: right;' +
-    '}' +
-    '.close_btn:hover { background-position: 0 -20px; }' +
-    '' +
-    '#show_options {' +
-        'color: #fff;' +
-        'display: inline-block;' +
-        'margin-left: 5px;' +
-        'padding: 0 15px;' +
-        'font-size: 12px;' +
-    '}' +
-    '#replybox_title:hover a {color: #222;}' +
-    '#reply_dialog #subject_line{' +
-        'height: 20px;' +
-        'margin: 10px 0;' +
-    '}' +
-    '#post_expression {' +
-        'display: inline-block;' +
-        'height: 15px;' +
-        'width: 15px;' +
-        'margin: 3px;' +
-        'vertical-align: middle;' +
-    '}' +
-    '#post_subject {' +
-        'margin-left: 5px;' +
-        'width: 400px;' +
-        'border: 1px solid #e0e0e0;' +
-    '}' +
-    '#post_subject:focus { outline: 1px solid #4A8CF7; }' +
-    '' +
-    '#editor {' +
-        'margin: 0 auto;' +
-        'border: 1px solid #9AC0E6;' +
-        'overflow: auto;' +
-    '}' +
-    '' +
-    '#e_control {' +
-        'color: grey;' +
-    '' +
-        'background-color: #F1F4F8;' +
-        'border-bottom: 1px solid #9AC0E6;' +
-        'padding: 3px 3px 5px 3px;' +
-    '}' +
-    'img.e_ctrl_btn {' +
-        'height: 16px;' +
-        'width: 16px;' +
-        'margin: 0 3px 0 0;' +
-        'border: 0;' +
-        'vertical-align: middle;' +
-    '}' +
-    '#add_attachments {' +
-        'display: inline-block;' +
-        'margin-left: 20px;' +
-        'color: grey;' +
-        'text-decoration: none;' +
-        'vertical-align: middle' +
-    '}' +
-    '' +
-    '#emot_panel {' +
-        'position: absolute;' +
-        'top: 0;' +
-        'right: 680px;' +
-        'width: 270px;  /* (20+3*2+1*2) * 9 + 8 + 5*2 */' +
-        'opacity: 1;' +
-        'background-color: #fff;' +
-        'border: 5px solid transparent;' +
-        'border-radius: 5px;' +
-        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 18px;' +
-    '}' +
-    '#emot_panel img {' +
-        'cursor: pointer;' +
-        'height: 20px;' +
-        'width: 20px;' +
-        'margin: 1px;' +
-        'padding: 3px;' +
-        'border: 1px solid #ccc;' +
-    '}' +
-    '#emot_panel img:hover {' +
-        'border: 1px solid #f78639;' +
-    '}' +
-    '' +
-    '#post_content {' +
-        'border: 0;' +
-        'height: 200px;' +
-        'width: 100%;' +
-        'padding: 5px;' +
-        'box-sizing: border-box;' +
-        '-moz-box-sizing: border-box;' +
-        '-webkit-box-sizing: border-box;' +
-    '' +
-        'font: inherit;' +
-        'overflow: auto;' +
-        'resize: vertical;' +
-        'word-wrap: break-word;' +
-    '}' +
-    '#post_content:focus { outline: 0px solid #9AC0E6; }' +
-    '' +
-    '#e_statusbar {' +
-        'background-color: #f2f2f2;' +
-        'border-top: 1px solid #9AC0E6;' +
-    '' +
-        'color: grey;' +
-        'padding: 2px;' +
-        'text-align: right;' +
-    '}' +
-    '#e_autosavecount {' +
-        'display: inline-block;' +
-        'padding-right: 20px;' +
-    '}' +
-    '#e_save, #e_recover {' +
-        'text-decoration: none;' +
-        'color: grey;' +
-    '}' +
-    '#e_tip {' +
-        'width: 200px;' +
-        'float: left;' +
-        'text-align: left;' +
-    '}' +
-    '' +
-    '' +
-    '/* 一个对话框中的（末行）按钮区 */' +
-    '.btn_bar {' +
-        'margin: 10px 0 0 0;' +
-        'width: 100%;' +
-    '}' +
-    '/* 标准按钮样式 */' +
-    '.soda_button {' +
-        'height: 20px;' +
-        'width: 75px;' +
-        'border: 0;' +
-        'border-radius: 2px;' +
-    '' +
-        'cursor: pointer;' +
-        'font: inherit;' +
-        'color: #fff;' +
-        'background-color: #6595D6;' +
-        'padding: 0 0 1px; /* 用baseliner测试了一下，这样内部文字是居中的，不过我也不清楚为什么是这个数 */' +
-    '}' +
-    '#submitting_status {' +
-        'display: inline-block;' +
-        'padding-left: 20px;' +
-        'text-align: left;' +
-        'color: red;' +
-    '' +
-        'padding-bottom: 1px;  // 因为button中的文字也有1px的padding，因此，为了对齐，加了这一句' +
-        'vertical-align: middle;' +
-    '}' +
-    '' +
-    '' +
-    '#attach_table {' +
-        'display: none;' +
-        'position:relative;' +
-        'height:50px;' +
-        'width: 100%;' +
-        'margin-top: 10px;' +
-    '' +
-        'padding: 2px;' +
-        'border-collapse: collapse;' +
-        'overflow: visible;' +
-        'text-align: left;' +
-    '}' +
-    '#attach_table th, #attach_table td { border: 1px solid #fff;}' +
-    '#attach_table th {' +
-        'color: #fff;' +
-        'background-color: #6595D6;' +
-        'background-image: none;' +
-    '}' +
-    '#attach_list > *:nth-child(even) { background-color:#ddd; }' +
-    '#attach_list > *:nth-child(odd) { background-color:#eee; }' +
-    '' +
-    '.filename { color: #090; }' +
-    '.uploadfail { color:#900; }' +
-    '.uploadsuccess { color:#090; }' +
-    '' +
-    '#upload_panel {' +
-        'position: absolute;' +
-    '' +
-        'border: 0px solid #ccc;' +
-        'border-radius: 5px;' +
-        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 18px;' +
-        'margin: 0 auto;' +
-        'padding: 8px;' +
-    '' +
-        'color: #000;' +
-        'background-color: #fff;' +
-        'opacity: 0.8;' +
-        'z-index: 200;' +
-    '}' +
-    '/* 上传面板的留白要比回复面板的留白稍小，故margin要覆盖定义 */' +
-    '#upload_title { margin: 0 0 15px 0; }' +
-    '/* 这个只是用来保证各浏览器的上传按钮宽度一样 */' +
-    '#files { width: 250px; }' +
-    '/* 垂直居中显示checkbox */' +
-    '#image_autoshow {' +
-        'margin: 0 2px 2px 0;' +
-        'padding: 0;' +
-        'vertical-align: middle;' +
-    '}' +
-    '#upload_msg {' +
-        'color: red;' +
-        'padding-left: 3px;' +
-    '}' +
-    '.fastquote_btn, .multiquote_btn {' +
-        'display: inline-block;' +
-        'vertical-align: middle;' +
-        'margin: 0 5px;' +
-    '}' +
-    '#reply_options {' +
-        'border: 0;' +
-        'width: 450px;' +
-    '}' +
-    '.label-left {' +
-        'display: inline-block;' +
-        'width: 120px;' +
-    '}' +
-    '#reply_options input[type="text"], #reply_options textarea {' +
-        'width: 300px;' +
-        'height: 20px;' +
-        'font: inherit;' +
-    '}' +
-    '#reply_options textarea {' +
-        'height: 40px;' +
-        'resize: vertical;' +
-    '}' +
-    '#reply_options input[type="checkbox"] {' +
-        'margin: 0 2px 2px 0;' +
-        'vertical-align: middle;' +
-    '}');
+_lib.addStyles([
+    '#reply_dialog, #reply_options {',
+        'color: #222;',
+        'background-color: white;',
+        'font: 12px/1.4 ubuntu, "Lucida Grande", "Hiragino Sans GB W3", "Microsoft Yahei", sans-serif;',
+        'width: 650px;',
+        'position: absolute;',
+        'border: 5px solid transparent;',
+        'border-radius: 5px;',
+        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 20px;',
+        'padding: 10px;',
+        'margin: 0 auto;',
+    '}',
+
+    '#reply_dialog ul{',
+        'display: block;',
+        'list-style: none;',
+        'padding-left: 0;',
+        'margin: 0;',
+    '}',
+
+    '.clearfix { clear: both; }',
+
+  '.box_title {',
+        'cursor: move;',
+        'font-size: 16px;',
+        'line-height: 20px;',
+        'margin: 0 0 20px 0;',
+        'color: #6595D6;',
+        'text-align: left;',
+    '}',
+    '.close_btn {',
+        'cursor: pointer;',
+        'width: 20px;',
+        'height: 20px;',
+        'background: url("http://file.cc98.org/uploadfile/2013/8/7/1954562236.gif");',
+        'float: right;',
+    '}',
+    '.close_btn:hover { background-position: 0 -20px; }',
+
+    '#show_options {',
+        'color: #fff;',
+        'display: inline-block;',
+        'margin-left: 5px;',
+        'padding: 0 15px;',
+        'font-size: 12px;',
+    '}',
+    '#replybox_title:hover a {color: #222;}',
+    '#reply_dialog #subject_line{',
+        'height: 20px;',
+        'margin: 10px 0;',
+    '}',
+    '#post_expression {',
+        'display: inline-block;',
+        'height: 15px;',
+        'width: 15px;',
+        'margin: 3px;',
+        'vertical-align: middle;',
+    '}',
+    '#post_subject {',
+        'margin-left: 5px;',
+        'width: 400px;',
+        'border: 1px solid #e0e0e0;',
+    '}',
+    '#post_subject:focus { outline: 1px solid #4A8CF7; }',
+
+    '#editor {',
+        'margin: 0 auto;',
+        'border: 1px solid #9AC0E6;',
+        'overflow: auto;',
+    '}',
+
+    '#e_control {',
+        'color: grey;',
+
+        'background-color: #F1F4F8;',
+        'border-bottom: 1px solid #9AC0E6;',
+        'padding: 3px 3px 5px 3px;',
+    '}',
+    'img.e_ctrl_btn {',
+        'height: 16px;',
+        'width: 16px;',
+        'margin: 0 3px 0 0;',
+        'border: 0;',
+        'vertical-align: middle;',
+    '}',
+    '#add_attachments {',
+        'display: inline-block;',
+        'margin-left: 20px;',
+        'color: grey;',
+        'text-decoration: none;',
+        'vertical-align: middle',
+    '}',
+
+    '#emot_panel {',
+        'position: absolute;',
+        'top: 0;',
+        'right: 680px;',
+        'width: 270px;  /* (20+3*2+1*2) * 9 + 8 + 5*2 */',
+        'opacity: 1;',
+        'background-color: #fff;',
+        'border: 5px solid transparent;',
+        'border-radius: 5px;',
+        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 18px;',
+    '}',
+    '#emot_panel img {',
+        'cursor: pointer;',
+        'height: 20px;',
+        'width: 20px;',
+        'margin: 1px;',
+        'padding: 3px;',
+        'border: 1px solid #ccc;',
+    '}',
+    '#emot_panel img:hover {',
+        'border: 1px solid #f78639;',
+    '}',
+
+    '#post_content {',
+        'border: 0;',
+        'height: 200px;',
+        'width: 100%;',
+        'padding: 5px;',
+        'box-sizing: border-box;',
+        '-moz-box-sizing: border-box;',
+        '-webkit-box-sizing: border-box;',
+
+        'font: inherit;',
+        'overflow: auto;',
+        'resize: vertical;',
+        'word-wrap: break-word;',
+    '}',
+    '#post_content:focus { outline: 0px solid #9AC0E6; }',
+
+    '#e_statusbar {',
+        'background-color: #f2f2f2;',
+        'border-top: 1px solid #9AC0E6;',
+
+        'color: grey;',
+        'padding: 2px;',
+        'text-align: right;',
+    '}',
+    '#e_autosavecount {',
+        'display: inline-block;',
+        'padding-right: 20px;',
+    '}',
+    '#e_save, #e_recover {',
+        'text-decoration: none;',
+        'color: grey;',
+    '}',
+    '#e_tip {',
+        'width: 200px;',
+        'float: left;',
+        'text-align: left;',
+    '}',
 
 
-// 设置界面
+    '/* 一个对话框中的（末行）按钮区 */',
+    '.btn_bar {',
+        'margin: 10px 0 0 0;',
+        'width: 100%;',
+    '}',
+    '/* 标准按钮样式 */',
+    '.soda_button {',
+        'height: 20px;',
+        'width: 75px;',
+        'border: 0;',
+        'border-radius: 2px;',
+
+        'cursor: pointer;',
+        'font: inherit;',
+        'color: #fff;',
+        'background-color: #6595D6;',
+        'padding: 0 0 1px; /* 用baseliner测试了一下，这样内部文字是居中的，不过我也不清楚为什么是这个数 */',
+    '}',
+    '#submitting_status {',
+        'display: inline-block;',
+        'padding-left: 20px;',
+        'text-align: left;',
+        'color: red;',
+
+        'padding-bottom: 1px;  // 因为button中的文字也有1px的padding，因此，为了对齐，加了这一句',
+        'vertical-align: middle;',
+    '}',
+
+
+    '#attach_table {',
+        'display: none;',
+        'position:relative;',
+        'height:50px;',
+        'width: 100%;',
+        'margin-top: 10px;',
+
+        'padding: 2px;',
+        'border-collapse: collapse;',
+        'overflow: visible;',
+        'text-align: left;',
+    '}',
+    '#attach_table th, #attach_table td { border: 1px solid #fff;}',
+    '#attach_table th {',
+        'color: #fff;',
+        'background-color: #6595D6;',
+        'background-image: none;',
+    '}',
+    '#attach_list > *:nth-child(even) { background-color:#ddd; }',
+    '#attach_list > *:nth-child(odd) { background-color:#eee; }',
+
+    '.filename { color: #090; }',
+    '.uploadfail { color:#900; }',
+    '.uploadsuccess { color:#090; }',
+
+    '#upload_panel {',
+        'position: absolute;',
+
+        'border: 0px solid #ccc;',
+        'border-radius: 5px;',
+        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 18px;',
+        'margin: 0 auto;',
+        'padding: 8px;',
+
+        'color: #000;',
+        'background-color: #fff;',
+        'opacity: 0.8;',
+        'z-index: 200;',
+    '}',
+    '/* 上传面板的留白要比回复面板的留白稍小，故margin要覆盖定义 */',
+    '#upload_title { margin: 0 0 15px 0; }',
+    '/* 这个只是用来保证各浏览器的上传按钮宽度一样 */',
+    '#files { width: 250px; }',
+    '/* 垂直居中显示checkbox */',
+    '#image_autoshow {',
+        'margin: 0 2px 2px 0;',
+        'padding: 0;',
+        'vertical-align: middle;',
+    '}',
+    '#upload_msg {',
+        'color: red;',
+        'padding-left: 3px;',
+    '}',
+    '.fastquote_btn, .multiquote_btn {',
+        'display: inline-block;',
+        'vertical-align: middle;',
+        'margin: 0 5px;',
+    '}',
+    '#reply_options {',
+        'border: 0;',
+        'width: 450px;',
+    '}',
+    '.label-left {',
+        'display: inline-block;',
+        'width: 120px;',
+    '}',
+    '#reply_options input[type="text"], #reply_options textarea {',
+        'width: 300px;',
+        'height: 25px;',
+        'font: inherit;',
+    '}',
+    '#reply_options textarea {',
+        'height: 50px;',
+        'resize: vertical;',
+    '}',
+    '#reply_options input[type="checkbox"] {',
+        'margin: 0 2px 2px 0;',
+        'vertical-align: middle;',
+    '}',
+    '#fast_reply {',
+        'display: inline-block;',
+        'background-image: url("http://file.cc98.org/uploadfile/2013/8/13/21275287642.png");',
+        'background-color: #f4f4f4;',
+        'position: fixed;',
+        'bottom: 50%;',
+        'right: 0;',
+        'width: 30px;',
+        'height: 24px;',
+        'border: 1px #cdcdcd solid;',
+        'border-radius: 3px;',
+        'padding: 3px 5px;',
+        'margin: 0;',
+        'cursor: pointer;',
+    '}',
+    '#fast_reply:hover {',
+        'background-position: 40px;',
+    '}'].join(''));
 
 });
