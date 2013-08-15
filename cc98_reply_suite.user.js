@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.3.2
+// @version        0.4.0
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -11,7 +11,7 @@
 // ==/UserScript==
 
 // todo:
-// 自定义快捷键、@，提示输入内容的最大长度，自定义表情
+// 自定义快捷键、@，提示输入内容的最大长度，显示上传进度
 
 // 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯▽╰)╭）
 // 而index表示楼层的序号，0是第一楼，1是第二楼……
@@ -22,7 +22,7 @@
 (function() {
 
 // Chrome 没有sendAsBinary函数，这里是一个实现
-if (!XMLHttpRequest.prototype.sendAsBinary) {
+//if (!XMLHttpRequest.prototype.sendAsBinary) {
     XMLHttpRequest.prototype.sendAsBinary = function(datastr) {
         function byteValue(x) {
             return x.charCodeAt(0) & 0xff;
@@ -31,7 +31,7 @@ if (!XMLHttpRequest.prototype.sendAsBinary) {
         var ui8a = new Uint8Array(ords);
         this.send(ui8a);
     }
-}
+//}
 
 // 转成UNICODE编码（sendAsBinary不能识别中文）
 function toUnicode(str){
@@ -46,6 +46,7 @@ window._lib = {
     parseQS: function(url) {
         url = url.toLowerCase().split('#')[0];  // remove the hash part
         var t = url.indexOf('?');
+
         var hash = {};
         if (t >= 0) {
             var params = url.substring(t+1).split('&');
@@ -475,11 +476,10 @@ var maxSubjectLength = 100;          // 主题框的最大输入长度(字节数
 ////////////////////////////////////////////////////////////////////////////////
 // 配置相关
 ////////////////////////////////////////////////////////////////////////////////
-var INITIAL_OPTIONS = {
-    version: '0.3.2',               // 脚本的版本号，便于后续升级时对配置做更改
+var DEFAULT_OPTIONS = {
     autoSaveInterval: 30,           // 自动保存间隔(秒)，必须是10的倍数
 
-    promptString: '>>>查看原帖',   // 原帖链接的提示文字
+    promptString: '>>查看原帖<<',   // 原帖链接的提示文字
     promptColor: 'royalblue',       //「查看原帖」的颜色
 
     replyTail: "",                  // 小尾巴
@@ -490,28 +490,194 @@ var INITIAL_OPTIONS = {
     showFastReplyButton: true       // 显示快速回复按钮
 };
 
+var DEFAULT_EMOTIONS = {
+    '阿狸': [
+        'http://file.cc98.org/uploadfile/2013/8/15/22191352816.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191117896.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191286203.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191293280.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191346003.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191256692.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191283003.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191377922.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191295952.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191489930.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191698061.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191397684.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191653193.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191818865.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191919656.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191487258.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191586317.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191496743.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191579241.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191597534.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191612466.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191618074.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191696857.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191691249.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191849844.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22192039418.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191982818.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191861061.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22191998439.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22192011375.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22192071865.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22192059179.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22192028201.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22192190949.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22192123383.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22192183873.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233034508.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233096466.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233017683.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233190180.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233194321.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233192853.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233138235.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233245839.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233233154.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233111134.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233424410.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233299252.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233483432.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233279227.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233225814.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233213129.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233496117.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233460998.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233476355.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233422679.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233513721.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233421211.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233597585.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233431223.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233581023.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/2233593708.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424416672.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424592783.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424610650.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424481038.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424411063.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424468617.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424652846.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424687965.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424658454.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424640161.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424671139.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424631352.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424649646.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424886084.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424645769.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424717990.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424895833.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424961504.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22425120363.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424920513.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424743097.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424792369.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424833875.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22425012496.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22425130112.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22425030789.gif',
+        'http://file.cc98.org/uploadfile/2013/8/15/22424992219.gif'
+    ],
+
+    '彼尔德': [
+        'http://file.cc98.org/uploadfile/2013/5/1/1923581777.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/1923622342.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/1923686972.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/1923620874.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/1923672819.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/1923678428.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/194570315.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/194581533.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/194550554.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/194513967.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/194591282.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/194678183.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/194683792.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/194623302.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/194651345.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/194656953.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19182984320.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19182929439.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19182964559.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19183052928.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19183014873.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19183092188.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19183097796.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19183059741.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19183047056.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19183076567.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19204268598.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19204320380.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19204380869.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19204348422.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19204361108.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19204352563.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19204321584.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19204363780.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19204373529.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19204342550.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19225773905.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19225744395.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19225724633.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19225747067.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19225769501.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19225845186.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19225884445.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19225873228.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19225842250.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19225851999.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19245387322.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19245376105.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19245385854.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19245314148.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19245354876.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19245346331.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19245382918.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19245333646.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19245426156.gif',
+        'http://file.cc98.org/uploadfile/2013/5/1/19245485177.gif'
+    ]
+};
+
 var options = {};
-
-// 载入设置
-function loadOptions() {
-    options = JSON.parse(localStorage.getItem('reply_options'));
-
-    options['version'] = INITIAL_OPTIONS['version'];
-    for (var prop in INITIAL_OPTIONS) {
-        if (options[prop] === undefined) {
-            options[prop] = INITIAL_OPTIONS[prop];
-        }
-    }
-
-    storeOptions();
-}
+var emotion_groups = {}
 
 // 将修改后的设置存回到localStorage
 function storeOptions() {
     localStorage.setItem('reply_options', JSON.stringify(options));
 }
 
+// 载入设置
+function loadOptions() {
+    options = JSON.parse(localStorage.getItem('reply_options')) || {};
+
+    if (options['version']) delete options['version'];  // 去掉之前版本留下来的无用的版本号信息
+
+    for (var prop in DEFAULT_OPTIONS) {
+        if (options[prop] === undefined) {
+            options[prop] = DEFAULT_OPTIONS[prop];
+        }
+    }
+
+    storeOptions();
+}
+
+function storeEmotions() {
+    localStorage.setItem('emotion_groups', JSON.stringify(emotion_groups));
+}
+
+function loadEmotions() {
+    emotion_groups = JSON.parse(localStorage.getItem('emotion_groups')) || {};
+
+    if (!emotion_groups || jQuery.isEmptyObject(emotion_groups)) emotion_groups = DEFAULT_EMOTIONS;
+}
+
 loadOptions();
+loadEmotions();
 
 ////////////////////////////////////////////////////////////////////////////////
 // 以下是界面无关的代码
@@ -594,12 +760,6 @@ function saveOptions() {
     $('#reply_options').remove();
 }
 
-// 显示发帖状态（成功、失败、10s等）
-function showStatus(status, color) {
-    $('#submitting_status').text(status);
-    if (color) $('#submitting_status').css('color', color);
-}
-
 // 显示发帖心情
 function showExpressionList() {
     if ($('#expression_list').length) return; // 如果页面中已经存在「心情列表」则返回
@@ -607,21 +767,9 @@ function showExpressionList() {
     $('#subject_line').append('<div id="expression_list"></div>');
 
     var expressionList = $('#expression_list');
-    expressionList.css({
-        'position': 'relative',
-        'background-color': '#fff',
-        'z-index': 100,
-        'margin-top': '-24px',  // 比原表情的位置偏离一点点，以覆盖住后面表示被选中的虚线框
-        'margin-left': '2px'
-    });
 
     for (var i = 1; i <= 22; ++i) {
         var img = $('<img src="http://www.cc98.org/face/face' + i + '.gif">');
-        img.css({
-            'cursor': 'pointer',
-            'margin': '0 10px 0 0',
-            'border': '0'
-        });
 
         img.click(function() {
             $('#post_expression').children().eq(0).attr('src', this.src);
@@ -658,16 +806,217 @@ function insertContent(content) {
     elem.selectionStart = elem.selectionEnd = start + content.length;
 }
 
-// 显示表情列表（待完成，暂时只能显示98默认表情）
-function toggleEmotions() {
-    if ($('#emot_panel').length) {
-        $('#emot_panel').remove();
+// 显示当前表情分组
+function showCurrentEmotionGroup() {
+    var current = $('.current').text();
+    var default_list = $('#default_list');
+    var user_defined_list = $('#user_defined_list');
+
+    if (current === '默认') {
+        user_defined_list.hide();
+        default_list.show();
+        $('#delete_emot_group').hide();
+        $('#edit_emot_group').hide();
         return;
     }
 
-    $('#reply_dialog').append('<div id="emot_panel"></div>');
+    // 隐藏默认表情列表，显示编辑、删除选项
+    default_list.hide();
+    $('#delete_emot_group').show();
+    $('#edit_emot_group').show();
 
+    // 如果选中的是之前缓存的分组就直接显示
+    if (user_defined_list.data('group_name') === current) {
+        user_defined_list.show();
+        return;
+    }
 
+    user_defined_list.empty();
+    user_defined_list.data('group_name', current);
+    for (var i = 0; i != emotion_groups[current].length; ++i) {
+        var img = $('<img src="' + emotion_groups[current][i] + '">');
+
+        img.click(function() {
+            insertContent('[upload=' + this.src.substring(this.src.lastIndexOf('.') + 1) +']' + this.src + '[/upload]');
+        });
+
+        img.hover(function() {
+            $('#emot_preview').attr('src', this.src);
+            $('#emot_preview').show();
+            if (this.offsetLeft < $('#user_defined_list').get(0).clientWidth / 2) {
+                $('#emot_preview').css({
+                    'left': '',
+                    'right': '0'
+                });
+            } else {
+                $('#emot_preview').css({
+                    'left': '0',
+                    'right': ''
+                });
+            }
+        }, function() {
+            $('#emot_preview').hide();
+        })
+
+        user_defined_list.append(img);
+    }
+    user_defined_list.show();
+
+}
+
+// 显示添加和编辑表情分组的界面
+function showEmotionConfig() {
+    $('body').append([
+        '<div id="emotion_config">',
+        '<form>',
+        '<fieldset>',
+            '<legend><h3 id="emotion_config_action">编辑分组</h3></legend>',
+            '<label for="group_name">分组名称（不能和已有的重复）</label>',
+            '<br>',
+            '<input id="group_name" type="text">',
+            '<br>',
+            '<label for="group_content">分组表情列表（图片地址或者带[upload]标签的地址，用换行符分隔）</label>',
+            '<br>',
+            '<textarea id="group_content"></textarea>',
+            '<br>',
+            '<input type="button" id="confirm_emotion_config" value="确认">',
+            '<input type="button" id="cancel_emotion_config" value="取消">',
+        '</fieldset>',
+        '</form>',
+        '</div>',
+        ].join('\n'));
+    $('#emotion_config').css({
+        'top': (document.body.clientHeight - $('#emotion_config').height()) / 2 + $(window).scrollTop(),
+        'left': (document.body.clientWidth - $('#emotion_config').width()) / 2 + $(window).scrollLeft()
+    });
+    $('#cancel_emotion_config').click(function() { $('#emotion_config').remove() });
+}
+
+// 添加表情分组
+function addEmotionGroup() {
+    showEmotionConfig();
+    $('#emotion_config_action').text('添加表情分组');
+    $('#confirm_emotion_config').click(function(){
+        var group_name = $('#group_name').val();
+        var group_content = $('#group_content').val();
+        if (!group_name) {
+            alert('请指定分组名称');
+            return;
+        }
+        if (!group_content) {
+            alert('请至少添加一个表情');
+            return;
+        }
+        if (emotion_groups[group_name]) {
+            alert('与其他分组重名');
+            return;
+        }
+
+        emotion_groups[group_name] = group_content.replace(/((?:\[upload=.*\])(.*)(?:\[\/upload\]))/ig, '$2').split('\n').replace(/^\s+|\s+$/g,'');
+        storeEmotions();
+
+        // 添加表情分组
+        var tab = $('<li class="tab_item">' + group_name + '</li>');
+        tab.click(function() {
+            if ($(this).hasClass('current')) return;
+
+            $('.current').removeClass('current');
+            $(this).addClass('current');
+            showCurrentEmotionGroup();
+        });
+        $('#emot_tab').append(tab);
+
+        $('#emotion_config').remove();
+    });
+}
+
+// 删除表情分组
+function deleteEmotionGroup() {
+    if (!confirm('确认删除该分组？')) return;
+
+    delete emotion_groups[$('.current').text()];
+    storeEmotions();
+
+    $('.current').remove();
+    $('#default_emotion_group').addClass('current');
+    showCurrentEmotionGroup();
+}
+
+// 编辑表情分组
+function editEmotionGroup() {
+    showEmotionConfig();
+    $('#emotion_config_action').text('编辑表情分组');
+
+    var current = $('.current').text();
+    $('#group_name').val(current);
+    $('#group_content').val(emotion_groups[current].join('\n'));
+
+    $('#confirm_emotion_config').click(function(){
+        var group_name = $('#group_name').val();
+        var group_content = $('#group_content').val();
+        if (!group_name) {
+            alert('请指定分组名称');
+            return;
+        }
+        if (!group_content) {
+            alert('请至少添加一个表情');
+            return;
+        }
+
+        // 更新emotion_groups
+        if (group_name !== current) {
+            if (emotion_groups[group_name]) {
+                alert('与其他分组重名');
+                return;
+            }
+
+            delete emotion_groups[group_name];
+            $('.current').text(group_name)
+        }
+
+        emotion_groups[group_name] = group_content.replace(/((?:\[upload=.*\])(.*)(?:\[\/upload\]))/ig, '$2').split('\n').replace(/^\s+|\s+$/g,'');
+        storeEmotions();
+
+        $('#emotion_config').remove();
+
+        // 刷新表情列表
+        $('#user_defined_list').empty();
+        $('#user_defined_list').data('group_name', '');
+        showCurrentEmotionGroup();
+    });
+}
+
+// 显示表情列表
+function toggleEmotions() {
+    if ($('#emot_panel').length) {
+        $('#emot_panel').toggle();
+        return;
+    }
+
+    $('#reply_dialog').append([
+        '<div id="emot_panel">',
+            '<ul id="emot_tab">',
+                '<li id="default_emotion_group" class="tab_item current">默认</li>',
+            '</ul>',
+            '<div id="default_list" class="emotion_list"></div>',
+            '<div id="user_defined_list" class="emotion_list"></div>',
+            '<img id="emot_preview"></img>',
+            '<ul id="emot_action">',
+                '<li id="add_emot_group">添加分组</li>',
+                '<li id="edit_emot_group">编辑分组</li>',
+                '<li id="delete_emot_group">删除分组</li>',
+            '</ul>',
+        '</div>'
+        ].join('\n'));
+
+    // 显示分组
+    var emot_tab = $('#emot_tab');
+    for (var group in emotion_groups) {
+        emot_tab.append('<li class="tab_item">' + group + '</li>');
+    }
+
+    // 显示默认分组
+    var default_list = $('#default_list');
     for (var i = 0; i <= 91; ++i) {
         var img = $('<img src="http://www.cc98.org/emot/simpleemot/emot' + ((i < 10) ? '0' + i : i) + '.gif">');
 
@@ -675,8 +1024,23 @@ function toggleEmotions() {
             insertContent(this.src.replace(/.*emot(\d+)\.gif/ig, '[em$1]'));
         });
 
-        $('#emot_panel').append(img);
+        default_list.append(img);
     }
+
+    $('#add_emot_group').click(addEmotionGroup);
+    // 默认分组没有编辑和删除两个选项，也没有表情预览
+    $('#edit_emot_group').click(editEmotionGroup).hide();
+    $('#delete_emot_group').click(deleteEmotionGroup).hide();
+    $('#emot_preview').hide();
+
+    // 切换表情分组
+    $('.tab_item').click(function() {
+        if ($(this).hasClass('current')) return;
+
+        $('.current').removeClass('current');
+        $(this).addClass('current');
+        showCurrentEmotionGroup();
+    });
 }
 
 // 上传文件
@@ -767,9 +1131,15 @@ function makeRelativeURL(content) {
     });
 }
 
-// at用户并刷新页面（于回复成功后执行）
+// 显示发帖状态（成功、失败、10s等）
+function showReplyStatus(status, color) {
+    $('#submitting_status').text(status);
+    if (color) $('#submitting_status').css('color', color);
+}
+
+// at用户并刷新页面（于回复成功后执行）（暂未完成）
 function atUsers() {
-    showStatus('发帖成功，正在跳转…');
+    showReplyStatus('发帖成功，正在跳转…');
     location.reload();
 }
 
@@ -780,11 +1150,11 @@ function reply() {
 
     // 考虑到用户可能把默认回复和小尾巴都去掉，所以回复内容仍可能为空
     if ($('#post_content').val() === "") {
-        showStatus('帖子内容不能为空');
+        showReplyStatus('帖子内容不能为空');
         return;
     }
 
-    showStatus('发表帖子中…');
+    showReplyStatus('发表帖子中…');
 
     _cc98.reply({
         "url": window.location.href,
@@ -799,7 +1169,7 @@ function reply() {
                 // 10s倒计时
                 for (var i = 0; i <= 10; ++i) {
                     setTimeout(function(e) {
-                        return function() { showStatus('论坛限制发帖时间间隔10s，倒计时' + (10-e) + 's…'); }
+                        return function() { showReplyStatus('论坛限制发帖时间间隔10s，倒计时' + (10-e) + 's…'); }
                     }(i), i * 1000);
                 }
 
@@ -807,7 +1177,7 @@ function reply() {
                 setTimeout(reply, 10000);
             } else {
                 // 未知错误
-                showStatus('未知错误');
+                showReplyStatus('未知错误');
             }
         }
     });
@@ -816,8 +1186,9 @@ function reply() {
 // 提交回复，包括对帖子内容的预处理（加小尾巴等）
 function submit() {
     // 为空则添加默认回复
-    if ($('#post_content').val() === '')
+    if ($('#post_content').val() === '') {
         $('#post_content').val(options.defaultReplyContent);
+    }
 
     // 添加小尾巴
     if (options.replyTail) {
@@ -829,7 +1200,7 @@ function submit() {
         $('#post_content').val(makeRelativeURL($('#post_content').val()));
     }
 
-    // 提交回复
+    // 发表回复
     reply();
 }
 
@@ -900,7 +1271,7 @@ function showDialog() {
         '</table>',
 
         '</div>'
-    ].join('');
+    ].join('\n');
 
     var upload_panel_html = [
         '<div id="upload_panel">',
@@ -920,7 +1291,7 @@ function showDialog() {
             '</table>',
             '<div id="upload_msg"></div>',
         '</div>'
-    ].join('');
+    ].join('\n');
 
     // 回复设置的表单没有用fieldset，因为用了之后关闭按钮的摆放就显得很尴尬……
     var reply_options_html = [
@@ -950,12 +1321,13 @@ function showDialog() {
             '</div>',
             '<br>',
             '<div>',
-                '<input type="checkbox" id="use-relative-link">',
-                '<label for="use-relative-link" >使用相对链接</label>',
-            '</div>',
-            '<div>',
                 '<input type="checkbox" id="disable-in-xinlin">',
                 '<label for="disable-in-xinlin" >在心灵之约禁用以上设置</label>',
+            '</div>',
+            '<br>',
+            '<div>',
+                '<input type="checkbox" id="use-relative-link">',
+                '<label for="use-relative-link" >使用相对链接</label>',
             '</div>',
             '<div>',
                 '<input type="checkbox" id="show-fast-reply-button">',
@@ -965,7 +1337,7 @@ function showDialog() {
             '<input type="button" id="save_reply_options" class="soda_button" value="保存设置">',
         '</form>',
         '</div>'
-    ].join('');
+    ].join('\n');
 
 
     if ($('#reply_dialog').length) return;
@@ -1003,7 +1375,7 @@ function showDialog() {
         $('body').append(upload_panel_html);
         $('#upload_title').drags({'draggable': '#upload_panel'});
         $('#upload_close_btn').click(function() { $('#upload_panel').remove(); })
-        // 居中显示
+
         $('#upload_panel').css({
             'top': (document.body.clientHeight - $('#upload_panel').height()) / 2 + $(window).scrollTop(),
             'left': (document.body.clientWidth - $('#upload_panel').width()) / 2 + $(window).scrollLeft()
@@ -1046,7 +1418,7 @@ function showDialog() {
     // 保存草稿
     $('#e_save').click(saveDraft);
     // 恢复数据
-    $('#e_recover').click( function() {
+    $('#e_recover').click(function() {
         if ($('#post_content').val() === '' || confirm('此操作将覆盖当前帖子内容，确定要恢复数据吗？')) {
           $('#post_content').val(sessionStorage.getItem('cc98_editor_content'));
       }
@@ -1058,14 +1430,13 @@ function showDialog() {
     // 将所有上传文件加到帖子中
     $('#filenames').css('cursor', 'pointer').click(function() { $('.filename').click(); });
 
-
     // 打开回复时将鼠标焦点定到输入框
     $('#post_content').focus();
 }
 
 // 给引用加上查看原帖链接
 function addQuoteURL(url, storey, quoteContent) {
-    var insertIndex = quoteContent.indexOf('[/b]') + 4;
+    var insertIndex = quoteContent.indexOf('[/b]');
     var quoteURL = _cc98.formatURL(url, true).split('#')[0] + '#' + storey;
     return quoteContent.substring(0, insertIndex) + '  [url=' + quoteURL + '][color=' + options.promptColor + ']' + options.promptString +
         '[/color][/url]' + quoteContent.substring(insertIndex);
@@ -1084,12 +1455,11 @@ function addFastQuote(url, storey) {
         'success': function(html) {
             var quoteContent = _lib.unescapeHTML((/<textarea.*>([\s\S]*)<\/textarea>/ig).exec(html)[1]);
 
-
             if (!options.disableInXinlin || _lib.parseQS(location.search)['boardid'] !== '182') {
                 quoteContent = addQuoteURL(url, storey, quoteContent);
             }
 
-            $('#post_content').val( $('#post_content').val() + quoteContent);
+            $('#post_content').val($('#post_content').val() + quoteContent);
         }
     });
 }
@@ -1111,7 +1481,7 @@ function addMultiQuote(url, storey) {
             quoteContent = addQuoteURL(url, storey, quoteContent);
         }
 
-        $('#post_content').val( $('#post_content').val() + quoteContent);
+        $('#post_content').val($('#post_content').val() + quoteContent);
     });
 }
 
@@ -1192,7 +1562,7 @@ _lib.addStyles([
         'color: #222;',
         'background-color: white;',
         'font: 12px/1.4 ubuntu, "Lucida Grande", "Hiragino Sans GB W3", "Microsoft Yahei", sans-serif;',
-        'width: 650px;',
+        'width: 600px;',
         'position: absolute;',
         'border: 5px solid transparent;',
         'border-radius: 5px;',
@@ -1201,7 +1571,7 @@ _lib.addStyles([
         'margin: 0 auto;',
     '}',
 
-    '#reply_dialog ul{',
+    '#replytable{',
         'display: block;',
         'list-style: none;',
         'padding-left: 0;',
@@ -1253,6 +1623,19 @@ _lib.addStyles([
     '}',
     '#post_subject:focus { outline: 1px solid #4A8CF7; }',
 
+    '#expression_list {',
+        'position: relative;',
+        'background-color: #fff;',
+        'z-index: 100;',
+        'margin-top: -24px; /* 比原表情的位置偏离一点点，以覆盖住后面表示被选中的虚线框 */',
+        'margin-left: 2px;',
+    '}',
+    '#expression_list img {',
+        'cursor: pointer;',
+        'margin: 0 10px 0 0;',
+        'border: 0;',
+    '}',
+
     '#editor {',
         'margin: 0 auto;',
         'border: 1px solid #9AC0E6;',
@@ -1281,28 +1664,79 @@ _lib.addStyles([
         'vertical-align: middle',
     '}',
 
+
     '#emot_panel {',
         'position: absolute;',
         'top: 0;',
-        'right: 680px;',
-        'width: 270px;  /* (20+3*2+1*2) * 9 + 8 + 5*2 */',
-        'opacity: 1;',
+        'right: 630px;',
+        'width: 280px;',
         'background-color: #fff;',
-        'border: 5px solid transparent;',
+        'padding: 5px 8px;',
+        'border: 1px solid #ADB6C9;',
         'border-radius: 5px;',
-        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 18px;',
+        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 10px;',
     '}',
-    '#emot_panel img {',
+    '#emot_panel li {',
+        'display: inline-block;',
+        'padding: 0 4px;',
+        'height: 21px;',
+        'line-height: 22px;',
+        'color: #369;',
+        'cursor: pointer;',
+    '}',
+
+    '#emot_tab {',
+        'border-bottom: 1px solid #B8D4E8;',
+        'height: 22px;',
+        'margin: 0px;',
+        'margin-bottom: 5px;',
+        'padding: 0 10px;',
+    '}',
+    '.current {',
+        'font-weight: bold;',
+        'padding: 0 8px;',
+        'border: 1px solid #B8D4E8;',
+        'border-bottom: 1px solid #fff;',
+        'border-radius: 3px 3px 0 0;',
+    '}',
+
+    '.emotion_list img {',
         'cursor: pointer;',
         'height: 20px;',
         'width: 20px;',
-        'margin: 1px;',
-        'padding: 3px;',
+        'margin: 2px;',
+        'padding: 1px;',
         'border: 1px solid #ccc;',
     '}',
-    '#emot_panel img:hover {',
+    '.emotion_list img:hover {',
         'border: 1px solid #f78639;',
     '}',
+
+    '#emot_preview {',
+        'position: absolute;',
+        'top: 28px;',
+        'display: block;',
+        'height: 80px;',
+        'width: 80px;',
+    '}',
+
+    '#emot_action {',
+        'padding-left: 0;',
+        'margin: 10px 0 0 0;',
+    '}',
+
+    '#emotion_config {',
+        'position: absolute;',
+        'background-color: #fff;',
+        'padding: 3px 5px;',
+        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 20px;',
+    '}',
+    '#group_name { width: 400px; }',
+    '#group_content {',
+        'width: 400px;',
+        'min-height: 300px;',
+    '}',
+
 
     '#post_content {',
         'border: 0;',
@@ -1430,6 +1864,8 @@ _lib.addStyles([
         'vertical-align: middle;',
         'margin: 0 5px;',
     '}',
+
+
     '#reply_options {',
         'border: 0;',
         'width: 450px;',
@@ -1456,7 +1892,7 @@ _lib.addStyles([
         'background-image: url("http://file.cc98.org/uploadfile/2013/8/13/21275287642.png");',
         'background-color: #f4f4f4;',
         'position: fixed;',
-        'bottom: 50%;',
+        'bottom: 30%;',
         'right: 0;',
         'width: 30px;',
         'height: 24px;',
@@ -1468,6 +1904,6 @@ _lib.addStyles([
     '}',
     '#fast_reply:hover {',
         'background-position: 40px;',
-    '}'].join(''));
+    '}'].join('\n'));
 
 });
