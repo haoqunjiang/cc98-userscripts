@@ -160,7 +160,7 @@ window._lib = {
 }
 
 // 98相关的函数接口，这个脚本中fami和postCount这两个函数都没用到
-// fami, reply, sendPM, upload, getPostContent, parseTopicPage, postCount, pageCount, formatURL
+// fami, reply, sendPM, upload, getPostContent, parseTopicPage, postCount, pageCount, formatURL, currentPage
 window._cc98 = function() {
 
     // 各种常量
@@ -457,6 +457,10 @@ window._cc98 = function() {
 
         params['star'] = (params['star'] && params['star'] !== '1') ? params['star'] : '';    // star=1时去掉
         return '/' + urlObj['path'] + '?' + _lib.toQS(params) + hash;
+    }
+
+    this.currentPage = function() {
+        return parseInt(/<span title="跳转到第\s*(\d+)\s*页/ig.exec(document.body.innerHTML)[1]);
     }
 
     return this;
@@ -1615,6 +1619,8 @@ function addMultiQuote(url, storey) {
     var post = _cc98.parseTopicPage()[index];
 
     if (!post) return;
+
+    url = _cc98.formatURL(url, true);
 
     _cc98.getPostContent(url, storey, function(content) {
         quoteContent = '[quote][b]以下是引用[i]' + post.username.replace("匿名\d+", "匿名") + '在' + post.posttime + '[/i]的发言：[/b]\n'
