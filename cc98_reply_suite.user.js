@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.4.0
+// @version        0.5.0
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -9,9 +9,6 @@
 // @require        http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js
 // @run-at         document-end
 // ==/UserScript==
-
-// todo:
-// 自定义快捷键、@，提示输入内容的最大长度，显示上传进度
 
 // 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯▽╰)╭）
 // 而index表示楼层的序号，0是第一楼，1是第二楼……
@@ -22,7 +19,7 @@
 (function() {
 
 // Chrome 没有sendAsBinary函数，这里是一个实现
-//if (!XMLHttpRequest.prototype.sendAsBinary) {
+if (!XMLHttpRequest.prototype.sendAsBinary) {
     XMLHttpRequest.prototype.sendAsBinary = function(datastr) {
         function byteValue(x) {
             return x.charCodeAt(0) & 0xff;
@@ -31,12 +28,8 @@
         var ui8a = new Uint8Array(ords);
         this.send(ui8a);
     }
-//}
-
-// 转成UNICODE编码（sendAsBinary不能识别中文）
-function toUnicode(str){
-    return escape(str).toLocaleLowerCase().replace(/%u/gi,'\\u');
 }
+
 
 // 辅助函数
 // parseQS, toQS, parseURL, parseCookies, unescapeHTML, ajax, xpath, addStyles
@@ -110,6 +103,11 @@ window._lib = {
         return e.childNodes.length === 0 ? '' : e.childNodes[0].nodeValue;
     },
 
+    // 转成UNICODE编码（sendAsBinary不能识别中文）
+    toUnicode: function(str){
+        return escape(str).toLocaleLowerCase().replace(/%u/gi,'\\u');
+    },
+
     ajax: function(opts) {
         opts = {
             type: opts.type || 'GET',
@@ -121,6 +119,7 @@ window._lib = {
         };
 
         var xhr = new XMLHttpRequest;
+
         xhr.open(opts.type, opts.url, opts.async);
         xhr.setRequestHeader('Content-type', opts.contentType);
         xhr.onreadystatechange = function() {
@@ -334,9 +333,9 @@ window._cc98 = function() {
             var data = [boundary,'\r\n',
                 'Content-Disposition: form-data; name="act"\r\n\r\nupload',
                 '\r\n',boundary,'\r\n',
-                'Content-Disposition: form-data; name="fname"\r\n\r\n',toUnicode(file.name),
+                'Content-Disposition: form-data; name="fname"\r\n\r\n',_lib.toUnicode(file.name),
                 '\r\n',boundary,'\r\n',
-                'Content-Disposition: form-data; name="file1"; filename="',toUnicode(file.name),'"\r\n',
+                'Content-Disposition: form-data; name="file1"; filename="',_lib.toUnicode(file.name),'"\r\n',
                 'Content-Type: ',file.type,'\r\n\r\n',
                 e.target.result,
                 '\r\n',boundary,'\r\n',
@@ -469,10 +468,6 @@ window._cc98 = function() {
 // 实际代码
 $(function() {
 
-var maxTextareaLength = 16240;       // 文本框的最大输入长度(字节数)
-var maxSubjectLength = 100;          // 主题框的最大输入长度(字节数)
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // 配置相关
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,7 +482,10 @@ var DEFAULT_OPTIONS = {
 
     useRelativeURL: true,           // 使用相对链接
     disableInXinlin: false,         // 在心灵禁用这些设置
-    showFastReplyButton: true       // 显示快速回复按钮
+    showFastReplyButton: true,      // 显示快速回复按钮
+    alwaysShowEmotions: false,      // 始终显示表情菜单
+    modifierKey: "ctrl",            // 快速回复快捷键组合的modifier key
+    hotKeyCode: 77                  // 快速回复快捷键组合中字母的keyCode
 };
 
 var DEFAULT_EMOTIONS = {
@@ -496,25 +494,14 @@ var DEFAULT_EMOTIONS = {
         'http://file.cc98.org/uploadfile/2013/8/15/22191117896.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191286203.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191293280.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191346003.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191256692.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191283003.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191377922.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191295952.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191489930.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191698061.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191397684.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191653193.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191818865.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191919656.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191487258.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191586317.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191496743.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191579241.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191597534.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191612466.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191618074.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22191696857.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191691249.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22191849844.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22192039418.gif',
@@ -565,7 +552,6 @@ var DEFAULT_EMOTIONS = {
         'http://file.cc98.org/uploadfile/2013/8/15/22424658454.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22424640161.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22424671139.gif',
-        'http://file.cc98.org/uploadfile/2013/8/15/22424631352.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22424649646.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22424886084.gif',
         'http://file.cc98.org/uploadfile/2013/8/15/22424645769.gif',
@@ -583,63 +569,123 @@ var DEFAULT_EMOTIONS = {
         'http://file.cc98.org/uploadfile/2013/8/15/22424992219.gif'
     ],
 
-    '彼尔德': [
-        'http://file.cc98.org/uploadfile/2013/5/1/1923581777.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/1923622342.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/1923686972.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/1923620874.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/1923672819.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/1923678428.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/194570315.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/194581533.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/194550554.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/194513967.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/194591282.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/194678183.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/194683792.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/194623302.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/194651345.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/194656953.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19182984320.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19182929439.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19182964559.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19183052928.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19183014873.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19183092188.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19183097796.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19183059741.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19183047056.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19183076567.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19204268598.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19204320380.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19204380869.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19204348422.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19204361108.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19204352563.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19204321584.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19204363780.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19204373529.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19204342550.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19225773905.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19225744395.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19225724633.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19225747067.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19225769501.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19225845186.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19225884445.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19225873228.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19225842250.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19225851999.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19245387322.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19245376105.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19245385854.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19245314148.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19245354876.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19245346331.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19245382918.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19245333646.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19245426156.gif',
-        'http://file.cc98.org/uploadfile/2013/5/1/19245485177.gif'
+    '鱼妹兔': [
+        'http://file.cc98.org/uploadfile/2013/8/16/11153969943.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11154131325.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1113730230.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11154368817.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11154443661.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1113634107.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1113624772.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1113884021.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131082931.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1113910433.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131089743.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131732447.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131356271.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131763426.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131811595.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131974343.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131940692.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132090442.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132318964.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132371172.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132317496.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132551111.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132523069.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132767374.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132758302.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132896422.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133097063.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132990664.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133126148.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133261117.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133237215.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133340678.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133317981.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133554005.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133555473.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11155033691.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133877409.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134346095.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134548155.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134560576.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134625044.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134775107.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134892987.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134922863.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135050228.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135174922.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135349466.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135425151.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135565465.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135616307.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135775178.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135898667.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135927224.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1114127403.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1114559137.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1114644570.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1114980791.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141071306.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141175296.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141283164.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141389827.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141498486.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141538787.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141663959.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141888502.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141997838.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11142037199.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11142528006.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11142640805.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11142875361.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11143720174.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11144984412.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1115717966.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11151144355.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11151652647.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153028995.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11152434724.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153355120.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11144312036.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11151655319.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11152946761.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153733919.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1115999799.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11152745905.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153640882.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11145899464.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11152829558.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153599689.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1115171649.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153677996.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11173439110.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11152020229.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1115495993.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11152759795.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153428132.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11144880685.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1115641754.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11151652383.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153234567.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11143895344.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11145217602.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11151125120.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11152295776.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153291593.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11151831118.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1115134385.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11145065442.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1115820488.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11151897893.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11144029838.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11145715222.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11151333598.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11152646319.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1117111712.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1117239341.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11174118401.gif'
     ]
 };
 
@@ -741,9 +787,16 @@ function showOptions() {
     $('#prompt-color').val(options.promptColor);
     $('#reply-tail').val(options.replyTail);
     $('#default-reply-content').val(options.defaultReplyContent);
-    $('#use-relative-link').prop('checked', options.useRelativeURL);
     $('#disable-in-xinlin').prop('checked', options.disableInXinlin);
+    $('#use-relative-link').prop('checked', options.useRelativeURL);
     $('#show-fast-reply-button').prop('checked', options.showFastReplyButton);
+    $('#always-show-emotions').prop('checked', options.alwaysShowEmotions);
+    $('#modifier-key option[value="ctrl"]').prop('selected', options.modifierKey==='ctrl');
+    $('#modifier-key option[value="alt"]').prop('selected', options.modifierKey==='alt');
+    for (var i = 65; i <= 90; ++i) {
+        $('#keycode').append('<option value="' + i + '"' + ((options.hotKeyCode === i) ? 'selected' : '') + '>'
+            + String.fromCharCode(i) + '</option>');
+    }
 }
 
 // 保存设置
@@ -752,9 +805,12 @@ function saveOptions() {
     options.promptColor = $('#prompt-color').val();
     options.replyTail = $('#reply-tail').val();
     options.defaultReplyContent = $('#default-reply-content').val();
-    options.useRelativeURL = $('#use-relative-link').prop('checked');
     options.disableInXinlin = $('#disable-in-xinlin').prop('checked');
+    options.useRelativeURL = $('#use-relative-link').prop('checked');
     options.showFastReplyButton = $('#show-fast-reply-button').prop('checked');
+    options.alwaysShowEmotions = $('#always-show-emotions').prop('checked');
+    options.modifierKey = $('#modifier-key option:selected').val();
+    options.hotKeyCode = parseInt($('#keycode option:selected').val());
 
     storeOptions();
     $('#reply_options').remove();
@@ -834,6 +890,8 @@ function showCurrentEmotionGroup() {
     user_defined_list.empty();
     user_defined_list.data('group_name', current);
     for (var i = 0; i != emotion_groups[current].length; ++i) {
+        if (!emotion_groups[current][i]) continue;
+
         var img = $('<img src="' + emotion_groups[current][i] + '">');
 
         img.click(function() {
@@ -861,7 +919,6 @@ function showCurrentEmotionGroup() {
         user_defined_list.append(img);
     }
     user_defined_list.show();
-
 }
 
 // 显示添加和编辑表情分组的界面
@@ -912,7 +969,7 @@ function addEmotionGroup() {
             return;
         }
 
-        emotion_groups[group_name] = group_content.replace(/((?:\[upload=.*\])(.*)(?:\[\/upload\]))/ig, '$2').split('\n').replace(/^\s+|\s+$/g,'');
+        emotion_groups[group_name] = group_content.replace(/((?:\[upload=.*\])(.*)(?:\[\/upload\]))/ig, '$2').split('\n');
         storeEmotions();
 
         // 添加表情分组
@@ -970,11 +1027,11 @@ function editEmotionGroup() {
                 return;
             }
 
-            delete emotion_groups[group_name];
+            delete emotion_groups[current];
             $('.current').text(group_name)
         }
 
-        emotion_groups[group_name] = group_content.replace(/((?:\[upload=.*\])(.*)(?:\[\/upload\]))/ig, '$2').split('\n').replace(/^\s+|\s+$/g,'');
+        emotion_groups[group_name] = group_content.replace(/((?:\[upload=.*\])(.*)(?:\[\/upload\]))/ig, '$2').split('\n');
         storeEmotions();
 
         $('#emotion_config').remove();
@@ -1017,7 +1074,8 @@ function toggleEmotions() {
 
     // 显示默认分组
     var default_list = $('#default_list');
-    for (var i = 0; i <= 91; ++i) {
+    // 正常应该从0到91的，不过自己用这样更好看点(*￣︶￣)y
+    for (var i = 00; i <= 91; ++i) {
         var img = $('<img src="http://www.cc98.org/emot/simpleemot/emot' + ((i < 10) ? '0' + i : i) + '.gif">');
 
         img.click(function() {
@@ -1118,6 +1176,7 @@ function uploadFiles() {
 
 // 保存草稿
 function saveDraft() {
+    sessionStorage.setItem('cc98_editor_subject', $('#post_subject').val());
     sessionStorage.setItem('cc98_editor_content', $('#post_content').val());
     var d = new Date();
     var time = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
@@ -1137,10 +1196,69 @@ function showReplyStatus(status, color) {
     if (color) $('#submitting_status').css('color', color);
 }
 
-// at用户并刷新页面（于回复成功后执行）（暂未完成）
+// 显示@结果
+function showAtStatus(username, success) {
+    if (!$('#at-status').length) {
+        $('#reply_dialog').append('<ul id="at-status"></ul>');
+    }
+
+    if (success) {
+        $('#at-status').append('<li class="at-succeed">@' + username + '成功</li>');
+    } else {
+        $('#at-status').append('<li class="at-fail">@' + username + '失败</li>');
+    }
+}
+
+// at用户并刷新页面（于回复成功后执行）
 function atUsers() {
-    showReplyStatus('发帖成功，正在跳转…');
-    location.reload();
+    // 去除引用内容（匹配规则并不十分准确不过够用了）
+    var text = $('#post_content').val().replace(/(\[quote\][\s\S]*\[\/quote\])|(\[quotex\][\s\S]*\[\/quotex\])/ig, '');
+    var tmp = text.match(/@@([^\s]*)(\s|$)/ig) || [];
+    var users = [];
+    for (var i = 0; i != tmp.length; ++i) {
+        var username = tmp[i].replace('@@', '').trim();
+        if (username) {
+            users.push(username);
+        }
+    }
+
+    // 如果没有被@的用户则直接跳转
+    if (!users.length) {
+        showReplyStatus('回复成功，正在跳转…');
+        location.reload();
+        return;
+    }
+
+    // 否则开始@
+    showReplyStatus('回复成功，正在处理@信息…');
+    var title = document.title.replace(/ » CC98论坛$/ig, '');
+    var message = '我在帖子' + '[url=' + _cc98.formatURL(location.href, true) + '][color=blue]' + title + '[/color][/url]' + '中@了你,快来看看吧~!';
+
+    var pending = users.length;
+    while (users.length) {
+        var username = users.shift();
+        console.log(username)
+        sendPM({
+            'recipient': username,
+            'subject': '@提示',
+            'message': message,
+            'callback': function(username) {
+                return function(html) {
+                    if (html.indexOf('论坛成功信息') !== -1) {
+                        showAtStatus(username, true);
+                    } else {
+                        showAtStatus(username, false);
+                    }
+
+                    pending--;
+                    if (pending === 0) {
+                        $('#at-status').append('<br><li class="at-complete">@完毕，正在跳转</li>');
+                        location.reload();
+                    }
+                }
+            }(username)
+        });
+    }
 }
 
 // 实际发表回复
@@ -1162,10 +1280,10 @@ function reply() {
         "content": $('#post_content').val(),
         "subject": $('#post_subject').val(),
         "callback": function(html) {
-            if (html.indexOf("状态：回复帖子成功") !== -1) {
+            if (html.indexOf('状态：回复帖子成功') !== -1) {
                 // 回复成功，下一步是处理@信息并刷新页面
                 atUsers();
-            } else if (html.indexOf("本论坛限制发贴距离时间为10秒") !== -1) {
+            } else if (html.indexOf('本论坛限制发贴距离时间为10秒') !== -1) {
                 // 10s倒计时
                 for (var i = 0; i <= 10; ++i) {
                     setTimeout(function(e) {
@@ -1175,8 +1293,11 @@ function reply() {
 
                 // 倒计时结束重新发帖
                 setTimeout(reply, 10000);
+            } else if (html.indexOf('主题长度不能超过100') !== -1) {
+                showReplyStatus('主题长度不能超过100');
+            } else if (html.indexOf('发言内容不得大于16240bytes') !== -1) {
+                showReplyStatus('发言内容不得大于16240bytes');
             } else {
-                // 未知错误
                 showReplyStatus('未知错误');
             }
         }
@@ -1185,14 +1306,16 @@ function reply() {
 
 // 提交回复，包括对帖子内容的预处理（加小尾巴等）
 function submit() {
-    // 为空则添加默认回复
-    if ($('#post_content').val() === '') {
-        $('#post_content').val(options.defaultReplyContent);
-    }
+    if (!options.disableInXinlin || _lib.parseQS(location.search)['boardid'] !== '182') {
+        // 为空则添加默认回复
+        if ($('#post_content').val() === '') {
+            $('#post_content').val(options.defaultReplyContent);
+        }
 
-    // 添加小尾巴
-    if (options.replyTail) {
-        $('#post_content').val($('#post_content').val() + '\n' + options.replyTail);
+        // 添加小尾巴
+        if (options.replyTail) {
+            $('#post_content').val($('#post_content').val() + '\n' + options.replyTail);
+        }
     }
 
     // 相对链接
@@ -1297,12 +1420,10 @@ function showDialog() {
     var reply_options_html = [
         '<div id="reply_options">',
         '<form id="options_form">',
-            '<legend>',
                 '<h3 id="options_header" class="box_title">',
                     '回复设置',
                     '<span><a id="options_close_btn" class="close_btn" title="关闭"></a></span>',
                 '</h3>',
-            '</legend>',
             '<div>',
                 '<label for="prompt-string" class="label-left">原帖链接提示文字</label>',
                 '<input type="text" id="prompt-string">',
@@ -1333,6 +1454,19 @@ function showDialog() {
                 '<input type="checkbox" id="show-fast-reply-button">',
                 '<label for="show-fast-reply-button">显示快速回复按钮</label>',
             '</div>',
+            '<div>',
+                '<input type="checkbox" id="always-show-emotions">',
+                '<label for="always-show-emotions">总是显示表情菜单</label>',
+            '</div>',
+            '<div>',
+                '<label>快速回复快捷键</label>',
+                '<select id="modifier-key">',
+                    '<option value="ctrl">Ctrl</option>',
+                    '<option value="alt">Alt</option>',
+                '</select>',
+                '<select id="keycode">',
+                '</select>',
+            '</div>',
             '<br>',
             '<input type="button" id="save_reply_options" class="soda_button" value="保存设置">',
         '</form>',
@@ -1348,6 +1482,11 @@ function showDialog() {
         'top': (document.body.clientHeight - $('#reply_dialog').height()) / 2 + $(window).scrollTop(),
         'left': (document.body.clientWidth - $('#reply_dialog').width()) / 2 + $(window).scrollLeft()
     });
+
+    // 如果始终显示表情菜单，则把位置右移140px
+    if (options.alwaysShowEmotions) {
+        $('#reply_dialog').css('left', parseInt($('#reply_dialog').css('left')) + 140 + 'px');
+    }
 
     // 显示设置界面
     $('#show_options').click(function() {
@@ -1408,7 +1547,11 @@ function showDialog() {
     $('#strikethrough').click(function() { addUBBCode('del') });
 
     // 表情列表
-    $('#add_emotions').click(toggleEmotions);
+    if (!options.alwaysShowEmotions) {
+        $('#add_emotions').click(toggleEmotions);
+    } else {
+        toggleEmotions();
+    }
 
     // 点击输入框时，隐藏发帖心情列表
     $('#post_content').click(function() { $('#expression_list').remove(); });
@@ -1526,7 +1669,8 @@ function addButtons() {
 // 似乎先处理keyCode再处理ctrlKey比较灵敏
 function shortcutHandlers(evt) {
     // CTRL + M 打开弹出回复框
-    if (evt.keyCode === 77 && evt.ctrlKey) {
+    var modifierKey = (options.modifierKey == "ctrl") ? evt.ctrlKey : evt.altKey;
+    if (evt.keyCode === options.hotKeyCode && modifierKey) {
         showDialog();
     }
 
@@ -1564,10 +1708,9 @@ _lib.addStyles([
         'font: 12px/1.4 ubuntu, "Lucida Grande", "Hiragino Sans GB W3", "Microsoft Yahei", sans-serif;',
         'width: 600px;',
         'position: absolute;',
-        'border: 5px solid transparent;',
         'border-radius: 5px;',
         'box-shadow: rgba(0, 0, 0, 0.4) 0 0 20px;',
-        'padding: 10px;',
+        'padding: 15px;',
         'margin: 0 auto;',
     '}',
 
@@ -1668,13 +1811,12 @@ _lib.addStyles([
     '#emot_panel {',
         'position: absolute;',
         'top: 0;',
-        'right: 630px;',
+        'right: 635px;',
         'width: 280px;',
         'background-color: #fff;',
         'padding: 5px 8px;',
-        'border: 1px solid #ADB6C9;',
         'border-radius: 5px;',
-        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 10px;',
+        'box-shadow: rgba(0, 0, 0, 0.4) 0 0 5px;',
     '}',
     '#emot_panel li {',
         'display: inline-block;',
@@ -1716,8 +1858,8 @@ _lib.addStyles([
         'position: absolute;',
         'top: 28px;',
         'display: block;',
-        'height: 80px;',
-        'width: 80px;',
+        'max-height: 100px;',
+        'max-width: 100px;',
     '}',
 
     '#emot_action {',
@@ -1904,6 +2046,21 @@ _lib.addStyles([
     '}',
     '#fast_reply:hover {',
         'background-position: 40px;',
-    '}'].join('\n'));
+    '}',
+    '#at-status {',
+        'position: absolute;',
+        'background-color: #fff;',
+        'box-shadow: grey 0px 0px 2px 2px;',
+        'opacity: 0.8;',
+        'top: 88px;',
+        'right: 17px;',
+        'margin: 0;',
+        'padding: 5px 15px;',
+        'list-style: none;',
+    '}',
+    '.at-succeed { color: green; }',
+    '.at-fail { color: brown; }',
+    '.at-complete { color: blue; }',
+    ].join('\n'));
 
 });
