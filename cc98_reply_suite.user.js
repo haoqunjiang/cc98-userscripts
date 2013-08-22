@@ -1,22 +1,19 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.5.0
+// @version        0.5.3
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
 // @include        http://www.cc98.org/dispbbs.asp*
-// @require        http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js
+// @require        http://libs.baidu.com/jquery/2.0.3/jquery.min.js
 // @run-at         document-end
 // ==/UserScript==
 
-// 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯▽╰)╭）
+// 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯_╰)╭
 // 而index表示楼层的序号，0是第一楼，1是第二楼……
 
-// 自己写的cc98 JavaScript SDK
-// _lib对象是各种辅助函数，比如解析querystring，ajax调用，xpath等
-// _cc98对象中是各种98相关的函数，比如发米、回帖、站短、解析页面等
-(function() {
+// 自定义表情部分的代码有点乱，不过够用就算了╮(╯_╰)╭
 
 // Chrome 没有sendAsBinary函数，这里是一个实现
 if (!XMLHttpRequest.prototype.sendAsBinary) {
@@ -27,24 +24,25 @@ if (!XMLHttpRequest.prototype.sendAsBinary) {
         var ords = Array.prototype.map.call(datastr, byteValue);
         var ui8a = new Uint8Array(ords);
         this.send(ui8a);
-    }
+    };
 }
 
 
 // 辅助函数
 // parseQS, toQS, parseURL, parseCookies, unescapeHTML, ajax, xpath, addStyles
-window._lib = {
+var _lib = {
 
     // parse the url get parameters
     parseQS: function(url) {
         url = url.toLowerCase().split('#')[0];  // remove the hash part
         var t = url.indexOf('?');
+        var params;
 
         var hash = {};
         if (t >= 0) {
-            var params = url.substring(t+1).split('&');
+            params = url.substring(t+1).split('&');
         } else {    // plain query string without '?' (e.g. in cookies)
-            var params = url.split('&');
+            params = url.split('&');
         }
         for (var i = 0; i < params.length; ++i) {
             var val = params[i].split('=');
@@ -56,16 +54,17 @@ window._lib = {
     toQS: function(obj) {
         var ret = [];
         for (var key in obj) {
-            if ('' === key) continue;
-            if ('' === obj[key]) continue;
-            ret.push(encodeURIComponent(key) + '=' + encodeURIComponent(obj[key]));
+            if (obj.hasOwnProperty(key)) {
+                if ('' === obj[key]) { continue; }
+                ret.push(encodeURIComponent(key) + '=' + encodeURIComponent(obj[key]));
+            }
         }
         return ret.join('&');
     },
 
     parseURL: function(url) {
         // from JavaScript: The Good Parts
-        var parse_url = /^(?:([A-Za-z]+):)?(\/{0,3})([0-9.\-A-Za-z]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?([^#]*))?(?:#(.*))?$/
+        var parse_url = /^(?:([A-Za-z]+):)?(\/{0,3})([0-9.\-A-Za-z]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?([^#]*))?(?:#(.*))?$/;
         var arr = parse_url.exec(url);
         var result = {};
         result['url'] = arr[0];
@@ -82,8 +81,9 @@ window._lib = {
     parseCookies: function(theCookie) {
         var cookies = {};           // The object we will return
         var all = theCookie;        // Get all cookies in one big string
-        if (all === '')             // If the property is the empty string
+        if (all === '') {            // If the property is the empty string
             return cookies;         // return an empty object
+        }
         var list = all.split('; '); // Split into individual name=value pairs
         for(var i = 0; i < list.length; i++) {  // For each cookie
             var cookie = list[i];
@@ -118,7 +118,7 @@ window._lib = {
             async: opts.async || (opts.async === undefined)
         };
 
-        var xhr = new XMLHttpRequest;
+        var xhr = new XMLHttpRequest();
 
         xhr.open(opts.type, opts.url, opts.async);
         xhr.setRequestHeader('Content-type', opts.contentType);
@@ -157,11 +157,13 @@ window._lib = {
         style.innerHTML = css;
         head.appendChild(style);
     }
-}
+};
 
 // 98相关的函数接口，这个脚本中fami和postCount这两个函数都没用到
 // fami, reply, sendPM, upload, getPostContent, parseTopicPage, postCount, pageCount, formatURL, currentPage
-window._cc98 = function() {
+var _cc98 = function() {
+
+    var that = {};
 
     // 各种常量
     var FAMI_URL = 'http://www.cc98.org/master_users.asp?action=award';
@@ -224,13 +226,13 @@ window._cc98 = function() {
     // @param {boolean}     opts.ismsg  站短/不站短
     // @param {boolean}     [opts.awardtype=true] 是否发米
     // @param {function(responseText)} [opts.callback=function(){}] 回调函数
-    this.fami = function(opts) {
+    that.fami = function(opts) {
         opts.callback = opts.callback || (function() {});
         opts.awardtype = opts.awardtype || (opts.awardtype === undefined);
 
-        var params = _lib.parseQS(opts["url"]);
-        var boardid = params["boardid"];
-        var topicid = params["id"];
+        var params = _lib.parseQS(opts['url']);
+        var boardid = params['boardid'];
+        var topicid = params['id'];
 
         _lib.ajax({
             'type': 'POST',
@@ -246,7 +248,7 @@ window._cc98 = function() {
             },
             'success': opts['callback'],
         });
-    },
+    };
 
     // 回帖
     // @param {string}  opts.url 帖子地址
@@ -260,7 +262,7 @@ window._cc98 = function() {
     // @param {boolean} [opts.viewerfilter] 使用指定用户可见
     // @param {string}  [opts.allowedviewers] 可见用户
     // @param {function(responseText)} [opts.callback=function(){}] 回调函数
-    this.reply = function(opts) {
+    that.reply = function(opts) {
         var params = _lib.parseQS(opts["url"]);
         var postURL = REPLY_URL + "&boardid=" + params["boardid"];
         if (opts["edit"]) {
@@ -297,14 +299,14 @@ window._cc98 = function() {
             'data': data,
             'success': opts['callback']
         });
-    },
+    };
 
     // 站短
     // @param {string}  opts.recipient 收件人
     // @param {string}  opts.subject 站短标题
     // @param {string}  opts.message 站短内容
     // @param {function(responseText)} [opts.callback=function(){}] 回调函数
-    this.sendPM = function(opts) {
+    that.sendPM = function(opts) {
         _lib.ajax({
             "type": "POST",
             "url": PM_URL,
@@ -315,20 +317,19 @@ window._cc98 = function() {
             },
             "success": opts["callback"]
         });
-    },
+    };
 
-    this.upload = function(file, callback) {
+    that.upload = function(file, callback) {
         var reader = new FileReader();
 
         var ext = file.name.substring(file.name.lastIndexOf('.') + 1);    // 文件扩展名
         var boardid = file2boardid[ext] || DEFAULT_UPLOAD_BOARDID;
         var url = 'http://www.cc98.org/saveannouce_upfile.asp?boardid=' + boardid;
 
-        reader.onload = function(e)
-        {
+        reader.onload = function(e) {
             var boundary = '----------------';
-            boundary += parseInt(Math.random()*98989898+1);
-            boundary += parseInt(Math.random()*98989898+1);
+            boundary += parseInt(Math.random()*98989898+1, 10);
+            boundary += parseInt(Math.random()*98989898+1, 10);
 
             var data = [boundary,'\r\n',
                 'Content-Disposition: form-data; name="act"\r\n\r\nupload',
@@ -350,43 +351,46 @@ window._cc98 = function() {
                 'success': callback
             });
 
-        }
+        };
+
         reader.readAsBinaryString(file);
-    },
+    };
 
     // 回帖内容如果要从html转成ubb的话太麻烦，但是没有执行js的rawhtml里有包含ubb代码
     // 所以为了方便起见，把获取帖子内容的功能独立出来，为它再开一个ajax请求
     // @param {string} url 网址
     // @param {Number} storey 楼层[1-9,0]
     // @param {function(postContent)) callback 回调函数
-    this.getPostContent = function(url, storey, callback) {
+    that.getPostContent = function(url, storey, callback) {
         var index;  // 实际索引
         index = ((storey-1) >= 0) ? (storey-1) : 9;
-        POST_RE.lastIndex = 0;  // reinitialize the regexp
         _lib.ajax({
             'type': 'GET',
             'url': url,
             'success': function(rawhtml) {
                 var result;
-                for (var i = 0; i != index; ++i)
-                    POST_RE.exec(rawhtml)
-                    result = POST_RE.exec(rawhtml)[1] || '';
-                    result = result
-                        .replace(REPLYVIEW_RE, '')
-                        .replace(/<br>/ig, '\n');
-                    callback(_lib.unescapeHTML(result));
+
+                POST_RE.lastIndex = 0;  // reinitialize the regexp
+                for (var i = 0; i !== index; ++i) {
+                    POST_RE.exec(rawhtml);
+                }
+                result = POST_RE.exec(rawhtml)[1] || '';
+                result = result
+                    .replace(REPLYVIEW_RE, '')
+                    .replace(/<br>/ig, '\n');
+                callback(_lib.unescapeHTML(result));
             }
         });
-    },
+    };
 
     // 获取页面中的用户列表，回帖时间回帖ID
     // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
-    this.parseTopicPage = function(htmlText) {
-        if (!htmlText) htmlText = document.body.innerHTML;
+    that.parseTopicPage = function(htmlText) {
+        if (!htmlText) { htmlText = document.body.innerHTML; }
         var postList = [];
         
         var nameArr = htmlText.match(NAME_RE);
-        nameArr.forEach(function(name, index, arr) {
+        nameArr.forEach(function(name) {
             var post = {};
             post['username'] = name.replace(NAME_RE, '$1');
             postList.push(post);
@@ -395,39 +399,38 @@ window._cc98 = function() {
         var idArr = htmlText.match(ANNOUNCEID_RE);
         // 考虑到心灵没有announceid，所以idArr可能为空
         if (idArr) {
-            idArr.forEach(function(id, index, arr) {
+            idArr.forEach(function(id, index) {
                 postList[index]['announceid'] = id.replace(ANNOUNCEID_RE, '$1');
             });
         }
 
         var timeArr = htmlText.match(POST_TIME_RE);
         if (timeArr) {
-            timeArr.forEach(function(t, index, arr) {
+            timeArr.forEach(function(t, index) {
                 postList[index]['posttime'] = t.replace(POST_TIME_RE, '$1');
-            })
+            });
         }
 
         return postList;
-    },
+    };
 
-    this.postCount = function(htmlText) {
-        if (!htmlText) htmlText = document.body.innerHTML;
-        return parseInt(htmlText.match(POST_COUNT_RE)[0].replace(POST_COUNT_RE, '$1'));
-    },
+    that.postCount = function(htmlText) {
+        if (!htmlText) { htmlText = document.body.innerHTML; }
+        return parseInt(htmlText.match(POST_COUNT_RE)[0].replace(POST_COUNT_RE, '$1'), 10);
+    };
 
-    this.pageCount = function(htmlText) {
-        if (!htmlText) htmlText = document.body.innerHTML;
+    that.pageCount = function(htmlText) {
         return Math.ceil(_cc98.postCount(htmlText) / 10);
-    },
+    };
 
     // 格式化网址，去除无用的参数并转为相对链接
     // @param {string}  url 要格式化的网址
     // @param {boolean} maxPageFix 是否修正url中star参数的值，使其不超过当前最后页的实际值
-    this.formatURL = function(url, maxPageFix) {
+    that.formatURL = function(url, maxPageFix) {
         var urlObj = _lib.parseURL(url);
 
         // 不在www.cc98.org域名下
-        if (urlObj['host'] != 'www.cc98.org') {
+        if (urlObj['host'] !== 'www.cc98.org') {
             return url;
         }
 
@@ -437,7 +440,7 @@ window._cc98 = function() {
         }
 
         var params = _lib.parseQS(urlObj['query']);
-        var hash = urlObj['hash'] ? ('#' + urlObj['hash']) : ''
+        var hash = urlObj['hash'] ? ('#' + urlObj['hash']) : '';
 
         // 不是dispbbs.asp开头的链接，只去掉空的get参数，转为相对链接，不做其他处理
         if (urlObj['path'] === 'dispbbs,asp') {
@@ -451,22 +454,20 @@ window._cc98 = function() {
         params['page'] = '';    // 去掉page
 
         // 
-        if (params['star'] && maxPageFix && parseInt(params['star']) > _cc98.pageCount()) {
-            params['star'] = _cc98.pageCount()
+        if (params['star'] && maxPageFix && parseInt(params['star'], 10) > _cc98.pageCount()) {
+            params['star'] = _cc98.pageCount();
         }
 
         params['star'] = (params['star'] && params['star'] !== '1') ? params['star'] : '';    // star=1时去掉
         return '/' + urlObj['path'] + '?' + _lib.toQS(params) + hash;
-    }
+    };
 
-    this.currentPage = function() {
-        return parseInt(/<span title="跳转到第\s*(\d+)\s*页/ig.exec(document.body.innerHTML)[1]);
-    }
+    that.currentPage = function() {
+        return parseInt(/<span title="跳转到第\s*(\d+)\s*页/ig.exec(document.body.innerHTML)[1], 10);
+    };
 
-    return this;
+    return that;
 }();
-
-})();
 
 
 // 实际代码
@@ -694,7 +695,7 @@ var DEFAULT_EMOTIONS = {
 };
 
 var options = {};
-var emotion_groups = {}
+var emotion_groups = {};
 
 // 将修改后的设置存回到localStorage
 function storeOptions() {
@@ -705,7 +706,7 @@ function storeOptions() {
 function loadOptions() {
     options = JSON.parse(localStorage.getItem('reply_options')) || {};
 
-    if (options['version']) delete options['version'];  // 去掉之前版本留下来的无用的版本号信息
+    if (options['version']) { delete options['version']; }  // 去掉之前版本留下来的无用的版本号信息
 
     for (var prop in DEFAULT_OPTIONS) {
         if (options[prop] === undefined) {
@@ -723,7 +724,7 @@ function storeEmotions() {
 function loadEmotions() {
     emotion_groups = JSON.parse(localStorage.getItem('emotion_groups')) || {};
 
-    if (!emotion_groups || jQuery.isEmptyObject(emotion_groups)) emotion_groups = DEFAULT_EMOTIONS;
+    if (!emotion_groups || jQuery.isEmptyObject(emotion_groups)) { emotion_groups = DEFAULT_EMOTIONS; }
 }
 
 loadOptions();
@@ -738,7 +739,7 @@ var uid = function() {
     var id = 0;
     return function() {
         return id++;
-    }
+    };
 }();
 
 // simple jquery draggable div plug-in
@@ -778,7 +779,7 @@ $.fn.drags = function(opt) {
     });
 
     return this;
-}
+};
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -798,8 +799,8 @@ function showOptions() {
     $('#modifier-key option[value="ctrl"]').prop('selected', options.modifierKey==='ctrl');
     $('#modifier-key option[value="alt"]').prop('selected', options.modifierKey==='alt');
     for (var i = 65; i <= 90; ++i) {
-        $('#keycode').append('<option value="' + i + '"' + ((options.hotKeyCode === i) ? 'selected' : '') + '>'
-            + String.fromCharCode(i) + '</option>');
+        $('#keycode').append('<option value="' + i + '"' + ((options.hotKeyCode === i) ? 'selected' : '') + '>' +
+            String.fromCharCode(i) + '</option>');
     }
 }
 
@@ -814,7 +815,7 @@ function saveOptions() {
     options.showFastReplyButton = $('#show-fast-reply-button').prop('checked');
     options.alwaysShowEmotions = $('#always-show-emotions').prop('checked');
     options.modifierKey = $('#modifier-key option:selected').val();
-    options.hotKeyCode = parseInt($('#keycode option:selected').val());
+    options.hotKeyCode = parseInt($('#keycode option:selected').val(), 10);
 
     storeOptions();
     $('#reply_options').remove();
@@ -822,22 +823,18 @@ function saveOptions() {
 
 // 显示发帖心情
 function showExpressionList() {
-    if ($('#expression_list').length) return; // 如果页面中已经存在「心情列表」则返回
+    if ($('#expression_list').length) { return; }   // 如果页面中已经存在「心情列表」则返回
 
     $('#subject_line').append('<div id="expression_list"></div>');
 
-    var expressionList = $('#expression_list');
-
     for (var i = 1; i <= 22; ++i) {
-        var img = $('<img src="http://www.cc98.org/face/face' + i + '.gif">');
-
-        img.click(function() {
-            $('#post_expression').children().eq(0).attr('src', this.src);
-            $('#expression_list').remove();
-        });
-
-        expressionList.append(img);
+        $('#expression_list').append('<img src="http://www.cc98.org/face/face' + i + '.gif">');
     }
+
+    $('#expression_list > img').click(function() {
+        $('#post_expression').children().eq(0).attr('src', this.src);
+        $('#expression_list').remove();
+    });
 }
 
 // 添加UBB代码
@@ -872,6 +869,8 @@ function showCurrentEmotionGroup() {
     var default_list = $('#default_list');
     var user_defined_list = $('#user_defined_list');
 
+    localStorage.setItem('last_emot_tab', current);
+
     if (current === '默认') {
         user_defined_list.hide();
         default_list.show();
@@ -893,35 +892,32 @@ function showCurrentEmotionGroup() {
 
     user_defined_list.empty();
     user_defined_list.data('group_name', current);
-    for (var i = 0; i != emotion_groups[current].length; ++i) {
-        if (!emotion_groups[current][i]) continue;
-
-        var img = $('<img src="' + emotion_groups[current][i] + '">');
-
-        img.click(function() {
-            insertContent('[upload=' + this.src.substring(this.src.lastIndexOf('.') + 1) +']' + this.src + '[/upload]');
-        });
-
-        img.hover(function() {
-            $('#emot_preview').attr('src', this.src);
-            $('#emot_preview').show();
-            if (this.offsetLeft < $('#user_defined_list').get(0).clientWidth / 2) {
-                $('#emot_preview').css({
-                    'left': '',
-                    'right': '0'
-                });
-            } else {
-                $('#emot_preview').css({
-                    'left': '0',
-                    'right': ''
-                });
-            }
-        }, function() {
-            $('#emot_preview').hide();
-        })
-
-        user_defined_list.append(img);
+    for (var i = 0; i !== emotion_groups[current].length; ++i) {
+        if (!emotion_groups[current][i]) { continue; }  // 跳过空行
+        user_defined_list.append('<img src="' + emotion_groups[current][i] + '">');
     }
+
+    // 绑定点击事件、预览功能
+    $('#user_defined_list > img').click(function() {
+        insertContent('[upload=' + this.src.substring(this.src.lastIndexOf('.') + 1) +']' + this.src + '[/upload]');
+    }).hover(function() {
+        $('#emot_preview').attr('src', this.src);
+        $('#emot_preview').show();
+        if (this.offsetLeft < $('#user_defined_list').get(0).clientWidth / 2) {
+            $('#emot_preview').css({
+                'left': '',
+                'right': '0'
+            });
+        } else {
+            $('#emot_preview').css({
+                'left': '0',
+                'right': ''
+            });
+        }
+    }, function() {
+        $('#emot_preview').hide();
+    });
+
     user_defined_list.show();
 }
 
@@ -950,7 +946,7 @@ function showEmotionConfig() {
         'top': (document.body.clientHeight - $('#emotion_config').height()) / 2 + $(window).scrollTop(),
         'left': (document.body.clientWidth - $('#emotion_config').width()) / 2 + $(window).scrollLeft()
     });
-    $('#cancel_emotion_config').click(function() { $('#emotion_config').remove() });
+    $('#cancel_emotion_config').click(function() { $('#emotion_config').remove(); });
 }
 
 // 添加表情分组
@@ -979,7 +975,9 @@ function addEmotionGroup() {
         // 添加表情分组
         var tab = $('<li class="tab_item">' + group_name + '</li>');
         tab.click(function() {
-            if ($(this).hasClass('current')) return;
+            if ($(this).hasClass('current')) {
+                return;
+            }
 
             $('.current').removeClass('current');
             $(this).addClass('current');
@@ -993,7 +991,9 @@ function addEmotionGroup() {
 
 // 删除表情分组
 function deleteEmotionGroup() {
-    if (!confirm('确认删除该分组？')) return;
+    if (!confirm('确认删除该分组？')) {
+        return;
+    }
 
     delete emotion_groups[$('.current').text()];
     storeEmotions();
@@ -1032,7 +1032,7 @@ function editEmotionGroup() {
             }
 
             delete emotion_groups[current];
-            $('.current').text(group_name)
+            $('.current').text(group_name);
         }
 
         emotion_groups[group_name] = group_content.replace(/((?:\[upload=.*\])(.*)(?:\[\/upload\]))/ig, '$2').split('\n');
@@ -1073,21 +1073,18 @@ function toggleEmotions() {
     // 显示分组
     var emot_tab = $('#emot_tab');
     for (var group in emotion_groups) {
-        emot_tab.append('<li class="tab_item">' + group + '</li>');
+        if (emotion_groups.hasOwnProperty(group)) {
+            emot_tab.append('<li class="tab_item">' + group + '</li>');
+        }
     }
 
     // 显示默认分组
-    var default_list = $('#default_list');
-    // 正常应该从0到91的，不过自己用这样更好看点(*￣︶￣)y
-    for (var i = 00; i <= 91; ++i) {
-        var img = $('<img src="http://www.cc98.org/emot/simpleemot/emot' + ((i < 10) ? '0' + i : i) + '.gif">');
-
-        img.click(function() {
-            insertContent(this.src.replace(/.*emot(\d+)\.gif/ig, '[em$1]'));
-        });
-
-        default_list.append(img);
+    for (var i = 0; i <= 91; ++i) {
+        $('#default_list').append('<img src="http://www.cc98.org/emot/simpleemot/emot' + ((i < 10) ? '0' + i : i) + '.gif">');
     }
+    $('#default_list > img').click(function() {
+        insertContent(this.src.replace(/.*emot(\d+)\.gif/ig, '[em$1]'));
+    });
 
     $('#add_emot_group').click(addEmotionGroup);
     // 默认分组没有编辑和删除两个选项，也没有表情预览
@@ -1097,11 +1094,21 @@ function toggleEmotions() {
 
     // 切换表情分组
     $('.tab_item').click(function() {
-        if ($(this).hasClass('current')) return;
+        if ($(this).hasClass('current')) {
+            return;
+        }
 
         $('.current').removeClass('current');
         $(this).addClass('current');
         showCurrentEmotionGroup();
+    });
+
+    // 显示最后使用的表情分组
+    var last = localStorage.getItem('last_emot_tab');
+    $('.tab_item').each(function() {
+        if ($(this).text() === last) {
+            $(this).click();
+        }
     });
 }
 
@@ -1160,15 +1167,15 @@ function uploadFiles() {
                     file.click(function(ubb) {
                         return function() {
                             insertContent(ubb);
-                        }
+                        };
                     }(ubb));
 
-                } else if (html.indexOf('文件格式不正确') != -1) {
+                } else if (html.indexOf('文件格式不正确') !== -1) {
                     file.next().next().addClass('uploadfail').text('文件格式不正确');
                 } else {
                     file.next().next().addClass('uploadfail').text('上传失败');
                 }
-            }
+            };
         }(name.id, $('#image_autoshow').prop('checked'));
 
         _cc98.upload(f, callback);
@@ -1189,7 +1196,7 @@ function saveDraft() {
 
 // 将content中的URL替换为相对链接
 function makeRelativeURL(content) {
-    return content.replace(/(?:http:\/\/)?www\.cc98\.org\/[&=#%\w\+\.\?]+/g, function(match, offset, string){
+    return content.replace(/(?:http:\/\/)?www\.cc98\.org\/[&=#%\w\+\.\?]+/g, function(match){
         return '[url]' + _cc98.formatURL(match) + '[/url]';
     });
 }
@@ -1197,7 +1204,7 @@ function makeRelativeURL(content) {
 // 显示发帖状态（成功、失败、10s等）
 function showReplyStatus(status, color) {
     $('#submitting_status').text(status);
-    if (color) $('#submitting_status').css('color', color);
+    if (color) { $('#submitting_status').css('color', color); }
 }
 
 // 显示@结果
@@ -1219,8 +1226,9 @@ function atUsers() {
     var text = $('#post_content').val().replace(/(\[quote\][\s\S]*\[\/quote\])|(\[quotex\][\s\S]*\[\/quotex\])/ig, '');
     var tmp = text.match(/@@([^\s]*)(\s|$)/ig) || [];
     var users = [];
-    for (var i = 0; i != tmp.length; ++i) {
-        var username = tmp[i].replace('@@', '').trim();
+    var username;
+    for (var i = 0; i !== tmp.length; ++i) {
+        username = tmp[i].replace('@@', '').trim();
         if (username) {
             users.push(username);
         }
@@ -1240,9 +1248,8 @@ function atUsers() {
 
     var pending = users.length;
     while (users.length) {
-        var username = users.shift();
-        console.log(username)
-        sendPM({
+        username = users.shift();
+        _cc98.sendPM({
             'recipient': username,
             'subject': '@提示',
             'message': message,
@@ -1259,7 +1266,7 @@ function atUsers() {
                         $('#at-status').append('<br><li class="at-complete">@完毕，正在跳转</li>');
                         location.reload();
                     }
-                }
+                };
             }(username)
         });
     }
@@ -1267,7 +1274,7 @@ function atUsers() {
 
 // 实际发表回复
 function reply() {
-    var expr = $('#post_expression').children().eq(0).attr('src')
+    var expr = $('#post_expression').children().eq(0).attr('src');
     expr = expr.substring(expr.lastIndexOf('/') + 1);
 
     // 考虑到用户可能把默认回复和小尾巴都去掉，所以回复内容仍可能为空
@@ -1291,7 +1298,7 @@ function reply() {
                 // 10s倒计时
                 for (var i = 0; i <= 10; ++i) {
                     setTimeout(function(e) {
-                        return function() { showReplyStatus('论坛限制发帖时间间隔10s，倒计时' + (10-e) + 's…'); }
+                        return function() { showReplyStatus('论坛限制发帖时间间隔10s，倒计时' + (10-e) + 's…'); };
                     }(i), i * 1000);
                 }
 
@@ -1478,7 +1485,9 @@ function showDialog() {
     ].join('\n');
 
 
-    if ($('#reply_dialog').length) return;
+    if ($('#reply_dialog').length) {
+        return;
+    }
     $('body').append(reply_dialog_html);
 
     // 居中（可见区域内绝对居中，不是固定居中，考虑到上传文件数量可能特别多超过可见范围）
@@ -1489,12 +1498,14 @@ function showDialog() {
 
     // 如果始终显示表情菜单，则把位置右移140px
     if (options.alwaysShowEmotions) {
-        $('#reply_dialog').css('left', parseInt($('#reply_dialog').css('left')) + 140 + 'px');
+        $('#reply_dialog').css('left', parseInt($('#reply_dialog').css('left'), 10) + 140 + 'px');
     }
 
     // 显示设置界面
     $('#show_options').click(function() {
-        if($('#reply_options').length) return;
+        if($('#reply_options').length) {
+            return;
+        }
 
         $('body').append(reply_options_html);
         $('#options_header').drags({'draggable': '#reply_options'});
@@ -1513,11 +1524,13 @@ function showDialog() {
 
     // 显示上传界面
     $('#add_attachments').click(function() {
-        if ($('#upload_panel').length) return;
+        if ($('#upload_panel').length) {
+            return;
+        }
 
         $('body').append(upload_panel_html);
         $('#upload_title').drags({'draggable': '#upload_panel'});
-        $('#upload_close_btn').click(function() { $('#upload_panel').remove(); })
+        $('#upload_close_btn').click(function() { $('#upload_panel').remove(); });
 
         $('#upload_panel').css({
             'top': (document.body.clientHeight - $('#upload_panel').height()) / 2 + $(window).scrollTop(),
@@ -1537,7 +1550,7 @@ function showDialog() {
                 remained = options.autoSaveInterval;
             }
             $('#e_autosavecount').text(remained + ' 秒后自动保存草稿');
-        }
+        };
     }(), 10000);    // 10s更改一次状态
 
     // 各种事件绑定
@@ -1548,7 +1561,7 @@ function showDialog() {
 
     // UBB编辑器
     $('#bold').click(function() { addUBBCode('b'); });
-    $('#strikethrough').click(function() { addUBBCode('del') });
+    $('#strikethrough').click(function() { addUBBCode('del'); });
 
     // 表情列表
     if (!options.alwaysShowEmotions) {
@@ -1591,8 +1604,10 @@ function addQuoteURL(url, storey, quoteContent) {
 
 // 添加回复内容（这里的storey是1-9再到0,，不是从0开始的）
 function addFastQuote(url, storey) {
-    replyNum = storey + 48;
-    if (!document.getElementById('reply'+replyNum)) return;
+    var replyNum = storey + 48;
+    if (!document.getElementById('reply'+replyNum)) {
+        return;
+    }
 
     showDialog();
 
@@ -1615,16 +1630,18 @@ function addFastQuote(url, storey) {
 function addMultiQuote(url, storey) {
     showDialog();
 
-    index = ((storey-1) >= 0) ? (storey-1) : 9;
+    var index = ((storey-1) >= 0) ? (storey-1) : 9;
     var post = _cc98.parseTopicPage()[index];
 
-    if (!post) return;
+    if (!post) {
+        return;
+    }
 
     url = _cc98.formatURL(url, true);
 
     _cc98.getPostContent(url, storey, function(content) {
-        quoteContent = '[quote][b]以下是引用[i]' + post.username.replace("匿名\d+", "匿名") + '在' + post.posttime + '[/i]的发言：[/b]\n'
-            + content + '\n[/quote]\n';
+        var quoteContent = '[quote][b]以下是引用[i]' + post.username.replace(/匿名\d+/, "匿名") + '在' + post.posttime +
+            '[/i]的发言：[/b]\n' + content + '\n[/quote]\n';
 
         if (!options.disableInXinlin || _lib.parseQS(location.href)['boardid'] !== '182') {
             quoteContent = addQuoteURL(url, storey, quoteContent);
@@ -1638,28 +1655,31 @@ function addMultiQuote(url, storey) {
 function addButtons() {
 
     // 获取所有「引用」链接
-    $('a[href*="reannounce.asp"]').each(function(index, ele) {
-        link = $(this);
+    $('a[href*="reannounce.asp"]').each(function() {
+        var link = $(this);
 
         // 如果是「答复」则跳过
-        if (link.attr('href').indexOf('setfilter') > 0) return;
+        if (link.attr('href').indexOf('setfilter') > 0) {
+            return;
+        }
 
         // 如果在完整版中没有引用图片作为子节点，或者在简版中文字内容不是[引用]，就不是真正的引用链接
         // 考虑到简版中纯文字的话还可能伪造[引用]链接，所以再加上对它父节点的判断
-        if (link.children().first().attr('src') !== 'pic/reply.gif'
-            && (link.text() !== '[引用]' || link.parent().get(0).className !== 'usernamedisp'))
+        if (link.children().first().attr('src') !== 'pic/reply.gif' &&
+            (link.text() !== '[引用]' || link.parent().get(0).className !== 'usernamedisp')) {
             return;
+        }
 
         link.parent().append('<a href="javascript:void(0);" class="fastquote_btn"><img src="http://file.cc98.org/uploadfile/2010/4/11/2201680240.png"></a>')
-            .append('<a href="javascript:void(0);" class="multiquote_btn"><img src="http://file.cc98.org/uploadfile/2010/5/12/9395977181.png"></a>')
-    })
+            .append('<a href="javascript:void(0);" class="multiquote_btn"><img src="http://file.cc98.org/uploadfile/2010/5/12/9395977181.png"></a>');
+    });
 
-    $('.fastquote_btn').each(function (index, ele) {
+    $('.fastquote_btn').each(function (index) {
         var storey = (index === 9) ? 0 : (index + 1);
         $(this).click(function() { addFastQuote(location.href, storey); });
     });
 
-    $('.multiquote_btn').each(function (index, ele) {
+    $('.multiquote_btn').each(function (index) {
         var storey = (index === 9) ? 0 : (index + 1);
         $(this).click(function() { addMultiQuote(location.href, storey); });
     });
@@ -1675,7 +1695,7 @@ function addButtons() {
 // 似乎先处理keyCode再处理ctrlKey比较灵敏
 function shortcutHandlers(evt) {
     // CTRL + M 打开弹出回复框
-    var modifierKey = (options.modifierKey == "ctrl") ? evt.ctrlKey : evt.altKey;
+    var modifierKey = (options.modifierKey === "ctrl") ? evt.ctrlKey : evt.altKey;
     if (evt.keyCode === options.hotKeyCode && modifierKey) {
         showDialog();
     }
@@ -1895,7 +1915,6 @@ _lib.addStyles([
         '-moz-box-sizing: border-box;',
         '-webkit-box-sizing: border-box;',
 
-        'font: inherit;',
         'overflow: auto;',
         'resize: vertical;',
         'word-wrap: break-word;',
