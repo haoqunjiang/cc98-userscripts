@@ -56,7 +56,7 @@
     function ajax(opts) {
         opts = {
             type: opts.type || "GET",
-            url: opts.url || '',
+            url: opts.url || "",
             data: opts.data || null,
             contentType: opts.contentType || "application/x-www-form-urlencoded; charset=UTF-8",
             success: opts.success || function(){},
@@ -71,6 +71,12 @@
             }
         };
         xhr.send(opts.data);
+    };
+
+    function unescapeHTML(input) {
+        var e = document.createElement('div');
+        e.innerHTML = input;
+        return e.childNodes.length === 0 ? '' : e.childNodes[0].nodeValue;
     };
 
 
@@ -147,17 +153,17 @@
 
         var statDiv = document.createElement("div");
         statDiv.id = "stat-box";
-        var ul = document.createElement("ul");
-        ul.style.listStyle = "none";
+        var re = document.createElement("div");
+        re.style.listStyle = "none";
 
         var sortedKey = Object.keys(stat).sort(function(a, b) { return stat[b] - stat[a]; });   // descending order
         sortedKey.forEach(function(ele, index, arr) {
-            var li = document.createElement("li");
-            li.innerHTML = ('[' + (index+1) + '] ' + ele + ": " + stat[ele]);
-            ul.appendChild(li);
+            var text = document.createTextNode('[' + (index+1) + '] ' + unescapeHTML(ele) + ": " + stat[ele]);
+            re.appendChild(text);
+            re.appendChild(document.createElement('br'))
         });
 
-        statDiv.appendChild(ul);
+        statDiv.appendChild(re);
 
         document.body.appendChild(mask);
         document.body.appendChild(statDiv);
