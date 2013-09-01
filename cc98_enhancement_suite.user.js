@@ -26,14 +26,89 @@
 // 自定义表情
 // 马甲切换器（优化一下界面，提供顶贴功能）
 
+
 (function() {
 var options = {
     // 网站显示选项
-    blockedIds: ['竹林来客'],        // 被屏蔽的ID列表，用双引号（""）括住，半角逗号（,）分隔
+    blockedIds: ["竹林来客", "燕北飞", "cft"],        // 被屏蔽的ID列表，用双引号（""）括住，半角逗号（,）分隔
     blockQmd: false,                // 是否屏蔽签名档
     blockAvatars: false,            // 是否屏蔽头像
     useImageViewer: false,          // 待实现：图片浏览器
 };
+
+var parseQS = function(url) {
+    url = url.toLowerCase().split("#")[0];  // remove the hash part
+    var t = url.indexOf("?");
+    var hash = {};
+    if (t >= 0) {
+        var params = url.substring(t+1).split("&");
+    } else {    // plain query string without "?" (e.g. in cookies)
+        var params = url.split("&");
+    }
+    for (var i = 0; i < params.length; ++i) {
+        var val = params[i].split("=");
+        hash[decodeURIComponent(val[0])] = decodeURIComponent(val[1]);
+    }
+    return hash;
+}
+
+var toQS = function(obj) {
+    var ret = [];
+    for (var key in obj) {
+        if ("" === key) continue;
+        if ("" === obj[key]) continue;
+        ret.push(encodeURIComponent(key) + "=" + encodeURIComponent(obj[key]));
+    }
+    return ret.join("&");
+}
+
+var parseURL = function(url) {
+    // from JavaScript: The Good Parts
+    var parse_url = /^(?:([A-Za-z]+):)?(\/{0,3})([0-9.\-A-Za-z]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?([^#]*))?(?:#(.*))?$/
+    var arr = parse_url.exec(url);
+    var result = {};
+    if (!arr) return;
+    result["url"] = arr[0];
+    result["scheme"] = arr[1];
+    result["slash"] = arr[2];
+    result["host"] = arr[3];
+    result["port"] = arr[4];
+    result["path"] = arr[5];
+    result["query"] = arr[6];
+    result["hash"] = arr[7];
+    return result;
+}
+
+var formatURL = function(url) {
+    var urlObj = parseURL(url);
+
+    // 不在www.cc98.org域名下
+    if (urlObj["host"] != "www.cc98.org") {
+        return url;
+    }
+
+    // http://www.cc98.org/
+    if (!urlObj["path"]) {
+        return "/";
+    }
+
+    var params = parseQS(urlObj["query"]);
+    var hash = urlObj["hash"] ? ("#" + urlObj["hash"]) : ""
+
+    // 不是dispbbs.asp开头的链接，只去掉空的get参数，转为相对链接，不做其他处理
+    if (urlObj["path"] === "dispbbs,asp") {
+        return "/" + urlObj["path"] + "?" + toQS(params) + hash;
+    }
+
+    // 如果不是在追踪页面，就去掉replyid
+    if (!params["trace"]) {
+        params["replyid"] = "";
+    }
+    params["page"] = "";    // 去掉page
+    params["star"] = (params["star"] && params["star"] !== "1") ? params["star"] : "";    // star=1时去掉
+    return "/" + urlObj["path"] + "?" + toQS(params) + hash;
+}
+
 
 /* 各种辅助函数 */
 var isInt = function(n) {
@@ -61,7 +136,7 @@ var addStyles = function(css) {
 var ajax = function(opts) {
     opts = {
         method: opts.method || "GET",
-        url: opts.url || '',
+        url: opts.url || "",
         content: opts.content || null,
         contentType: opts.contentType || "application/x-www-form-urlencoded; charset=UTF-8",
         onload: opts.onload || function(){},
@@ -153,8 +228,11 @@ var removeClass = function(element, value) {
             );
 };
 
-var processUrl = function (content) {
-    return content.replace(/(http.*)www\.cc98\.org\/([&=#%\w\+\.\?]+)/g, '[url] /$2 [/url]');
+var processUrl = function(content) {
+    console.log(content)
+    return content.replace(/(?:http:\/\/)?www\.cc98\.org\/[&=#%\w\+\.\?]+/g, function(match, offset, string){
+            return "[url]" + formatURL(match) + "[/url]";
+        });
 }
 
 /* 各种辅助函数完 */
@@ -164,7 +242,7 @@ var processUrl = function (content) {
 
 // 在账号选项下增加「添加账号」、「马甲顶贴」选项，给每个账号边上加上X
 function accountSwitchUI() {
-    accountSettings = xpath("//td[@class='TopLighNav1']/div/div/a");
+    accountSettings = xpath("//td[@class="TopLighNav1"]/div/div/a");
 }
 
 /* 马甲切换器完 */
@@ -173,7 +251,7 @@ function accountSwitchUI() {
 // 一些全局变量
 var postList = [];
 var nextPage;
-var submit_btn = xpath("//input[@name='Submit']");
+var submit_btn = xpath("//input[@name="Submit"]");
 
 // 解析当前页面，获取以及更改一些DOM元素
 // 主要用于屏蔽选项
@@ -259,7 +337,7 @@ function parseDOM() {
 
     // 相对链接。此处是临时解决方案
     if (submit_btn) {
-        submit_btn.addEventListener('click', function(e) {
+        submit_btn.addEventListener("click", function(e) {
             var text_area = $("content");
             text_area.value = processUrl(text_area.value);
             }, false);
