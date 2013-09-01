@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.5.3
+// @version        0.5.6
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -489,8 +489,8 @@ var DEFAULT_OPTIONS = {
     disableInXinlin: false,         // 在心灵禁用这些设置
     showFastReplyButton: true,      // 显示快速回复按钮
     alwaysShowEmotions: false,      // 始终显示表情菜单
-    modifierKey: "ctrl",            // 快速回复快捷键组合的modifier key
-    hotKeyCode: 77                  // 快速回复快捷键组合中字母的keyCode
+    modifierKey: "alt",            // 快速回复快捷键组合的modifier key
+    hotKeyCode: 82                  // 快速回复快捷键组合中字母的keyCode
 };
 
 var DEFAULT_EMOTIONS = {
@@ -818,7 +818,7 @@ function saveOptions() {
     options.hotKeyCode = parseInt($('#keycode option:selected').val(), 10);
 
     storeOptions();
-    $('#reply_options').remove();
+    $('#reply_options').fadeOut("fast", function(){ $(this).remove(); });
 }
 
 // 显示发帖心情
@@ -833,8 +833,9 @@ function showExpressionList() {
 
     $('#expression_list > img').click(function() {
         $('#post_expression').children().eq(0).attr('src', this.src);
-        $('#expression_list').remove();
+        $('#expression_list').fadeOut("fast", function(){ $(this).remove(); });
     });
+    $('#expression_list').hide().fadeIn("fast");
 }
 
 // 添加UBB代码
@@ -942,11 +943,12 @@ function showEmotionConfig() {
         '</form>',
         '</div>',
         ].join('\n'));
+    $('#emotion_config').hide().fadeIn("fast");
     $('#emotion_config').css({
         'top': (document.body.clientHeight - $('#emotion_config').height()) / 2 + $(window).scrollTop(),
         'left': (document.body.clientWidth - $('#emotion_config').width()) / 2 + $(window).scrollLeft()
     });
-    $('#cancel_emotion_config').click(function() { $('#emotion_config').remove(); });
+    $('#cancel_emotion_config').click(function() { $('#emotion_config').fadeOut("fast", function(){ $(this).remove(); }); });
 }
 
 // 添加表情分组
@@ -985,7 +987,7 @@ function addEmotionGroup() {
         });
         $('#emot_tab').append(tab);
 
-        $('#emotion_config').remove();
+        $('#emotion_config').fadeOut("fast", function(){ $(this).remove(); });
     });
 }
 
@@ -1038,7 +1040,7 @@ function editEmotionGroup() {
         emotion_groups[group_name] = group_content.replace(/((?:\[upload=.*\])(.*)(?:\[\/upload\]))/ig, '$2').split('\n');
         storeEmotions();
 
-        $('#emotion_config').remove();
+        $('#emotion_config').fadeOut("fast", function(){ $(this).remove(); });
 
         // 刷新表情列表
         $('#user_defined_list').empty();
@@ -1050,7 +1052,7 @@ function editEmotionGroup() {
 // 显示表情列表
 function toggleEmotions() {
     if ($('#emot_panel').length) {
-        $('#emot_panel').toggle();
+        $('#emot_panel').fadeToggle();
         return;
     }
 
@@ -1110,6 +1112,8 @@ function toggleEmotions() {
             $(this).click();
         }
     });
+
+    $('#emot_panel').hide().fadeIn("fast");   // 渐显特效
 }
 
 // 上传文件
@@ -1182,7 +1186,7 @@ function uploadFiles() {
     }
 
     // 关闭上传面板
-    $('#upload_panel').remove();
+    $('#upload_panel').fadeOut("fast", function(){ $(this).remove(); });
 }
 
 // 保存草稿
@@ -1264,7 +1268,7 @@ function atUsers() {
                     pending--;
                     if (pending === 0) {
                         $('#at-status').append('<br><li class="at-complete">@完毕，正在跳转</li>');
-                        location.reload();
+                        setTimeout(function() { location.reload(); }, 1000);
                     }
                 };
             }(username)
@@ -1355,6 +1359,7 @@ function showDialog() {
             '<li id="subject_line" class="clearfix">',
                 '<label for="post_subject"><a id="post_expression" href="javascript:void(0);"><img src="http://www.cc98.org/face/face7.gif"></a></label>',
                 '<input type="text" id="post_subject" name="post_subject">',
+                '<input style="display:none"',  // form中如果只有一个input元素，按下enter会导致表格提交，这个input元素是为了防止这种情况
             '</li>',
 
             '<li>',
@@ -1501,6 +1506,8 @@ function showDialog() {
         $('#reply_dialog').css('left', parseInt($('#reply_dialog').css('left'), 10) + 140 + 'px');
     }
 
+    $('#reply_dialog').hide().fadeIn("fast"); // 渐显特效
+
     // 显示设置界面
     $('#show_options').click(function() {
         if($('#reply_options').length) {
@@ -1509,8 +1516,9 @@ function showDialog() {
 
         $('body').append(reply_options_html);
         $('#options_header').drags({'draggable': '#reply_options'});
-        $('#options_close_btn').click(function() { $('#reply_options').remove(); });
+        $('#options_close_btn').click(function() { $('#reply_options').fadeOut("fast", function(){ $(this).remove(); }); });
 
+        $('#reply_options').hide().fadeIn("fast");
         $('#reply_options').css({
             'top': (document.body.clientHeight - $('#reply_options').height()) / 2 + $(window).scrollTop(),
             'left': (document.body.clientWidth - $('#reply_options').width()) / 2 + $(window).scrollLeft()
@@ -1530,8 +1538,9 @@ function showDialog() {
 
         $('body').append(upload_panel_html);
         $('#upload_title').drags({'draggable': '#upload_panel'});
-        $('#upload_close_btn').click(function() { $('#upload_panel').remove(); });
+        $('#upload_close_btn').click(function() { $('#upload_panel').fadeOut("fast", function(){ $(this).remove(); }); });
 
+        $('#upload_panel').hide().fadeIn("fast");
         $('#upload_panel').css({
             'top': (document.body.clientHeight - $('#upload_panel').height()) / 2 + $(window).scrollTop(),
             'left': (document.body.clientWidth - $('#upload_panel').width()) / 2 + $(window).scrollLeft()
@@ -1555,7 +1564,11 @@ function showDialog() {
 
     // 各种事件绑定
     $('#replybox_title').drags({"draggable": "#reply_dialog"});
-    $('#dialog_close_btn').click(function() { $('#reply_dialog').remove(); $('#upload_panel').remove(); clearInterval(autoSaveIntervalId); });
+    $('#dialog_close_btn').click(function() {
+        $('#reply_dialog').fadeOut("fast", function(){ $(this).remove(); });
+        $('#upload_panel').fadeOut("fast", function(){ $(this).remove(); });
+        clearInterval(autoSaveIntervalId);
+    });
 
     $('#post_expression').click(showExpressionList);
 
@@ -1571,7 +1584,7 @@ function showDialog() {
     }
 
     // 点击输入框时，隐藏发帖心情列表
-    $('#post_content').click(function() { $('#expression_list').remove(); });
+    $('#post_content').click(function() { $('#expression_list').fadeOut("fast", function(){ $(this).remove(); }); });
 
     // 初始状态
     $('#e_autosavecount').text(options.autoSaveInterval + ' 秒后自动保存草稿');
@@ -1670,8 +1683,8 @@ function addButtons() {
             return;
         }
 
-        link.parent().append('<a href="javascript:void(0);" class="fastquote_btn"><img src="http://file.cc98.org/uploadfile/2010/4/11/2201680240.png"></a>')
-            .append('<a href="javascript:void(0);" class="multiquote_btn"><img src="http://file.cc98.org/uploadfile/2010/5/12/9395977181.png"></a>');
+        link.parent().append('<a href="javascript:void(0);" title="快速引用" class="fastquote_btn"><img src="http://file.cc98.org/uploadfile/2010/4/11/2201680240.png"></a>')
+            .append('<a href="javascript:void(0);" title="多重引用" class="multiquote_btn"><img src="http://file.cc98.org/uploadfile/2010/5/12/9395977181.png"></a>');
     });
 
     $('.fastquote_btn').each(function (index) {
@@ -1702,8 +1715,8 @@ function shortcutHandlers(evt) {
 
     // ESC 关闭回复框和上传框
     if (evt.keyCode === 27) {
-        $('#reply_dialog').remove();
-        $('#upload_panel').remove();
+        $('#reply_dialog').fadeOut("fast", function(){ $(this).remove(); });
+        $('#upload_panel').fadeOut("fast", function(){ $(this).remove(); });
     }
 
     // CTRL + SHIFT + 0-9 快速引用
@@ -1858,7 +1871,7 @@ _lib.addStyles([
         'height: 22px;',
         'margin: 0px;',
         'margin-bottom: 5px;',
-        'padding: 0 10px;',
+        'padding: 0 3px;',
     '}',
     '.current {',
         'font-weight: bold;',
@@ -1957,10 +1970,9 @@ _lib.addStyles([
         'border-radius: 2px;',
 
         'cursor: pointer;',
-        'font: inherit;',
         'color: #fff;',
         'background-color: #6595D6;',
-        'padding: 0 0 1px; /* 用baseliner测试了一下，这样内部文字是居中的，不过我也不清楚为什么是这个数 */',
+        'padding: 0 0 2px; /* 用baseliner测试了一下，这样内部文字是居中的，不过我也不清楚为什么是这个数 */',
     '}',
     '#submitting_status {',
         'display: inline-block;',
@@ -2043,7 +2055,7 @@ _lib.addStyles([
     '}',
     '#reply_options input[type="text"], #reply_options textarea {',
         'width: 300px;',
-        'height: 25px;',
+   -     'height: 25px;',
         'font: inherit;',
     '}',
     '#reply_options textarea {',
