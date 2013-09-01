@@ -64,6 +64,7 @@ var removeClass = function(element, value) {
             );
 };
 
+// todo: 跳过[code][/code]标签中的内容
 var processUrl = function (content) {
     return content.replace(/(http.*)www\.cc98\.org\/([&=#%\w\+\.\?]+)/g, '[url] /$2 [/url]');
 }
