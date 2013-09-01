@@ -104,6 +104,8 @@ $(function() {
                     秒；\n\
                     <input id="start-qianglou" type="button" value="开始抢楼">\n\
                     <span id="qianglou-msg" style="display: inline-block; padding-left: 5px;"></span>\n\
+                </td>\n\
+            </tr>\n\
             ');
 
         $("#start-qianglou").click(storeOptions);
