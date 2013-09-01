@@ -127,6 +127,8 @@ function parseCookies(theCookie) {
     return cookies;
 }
 
+// actual functions
+
 function main() {
     var id = setInterval( function() {
         ajax({
@@ -144,15 +146,17 @@ function qiangshouye(html) {
     var title = latest.replace(NEWTOPIC_RE, "$2");
     console.log(title)
     if (title.indexOf("水楼") > 0) {
-        reply({
-            "url": url,
-            "expression": "face7.gif",
-            "content": "[em03]sy",
-            "password": parseQS(parseCookies(document.cookie)["aspsky"])["password"],
-            "callback": function() { alert("成功抢到贴子“" + title + "”的首页！"); }
-        })
-        clearInterval(parseInt(localStorage.getItem("qiangshouye")));
-        localStorage.remove("qiangshouye");
+        setTimeout(function(){
+            reply({
+                "url": url,
+                "expression": "face7.gif",
+                "content": "sy!",
+                "password": parseQS(parseCookies(document.cookie)["aspsky"])["password"],
+                "callback": function() { alert("成功抢到贴子“" + title + "”的首页！"); }
+            })
+            clearInterval(parseInt(localStorage.getItem("qiangshouye")));
+            localStorage.remove("qiangshouye");
+        }, 1000);
     }
 }
 
