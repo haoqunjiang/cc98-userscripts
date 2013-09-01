@@ -270,7 +270,7 @@ $(function() {
                     var endStorey = (curPage === lastPage && lastStorey <= users.length) ? lastStorey : users.length; // 当页结束楼层
 
                     // 发米
-                    function famiByPage(first, last) {
+                    function famiByStorey(first, last) {
                         if (first > last) {
                             return pageDone(curPage);
                         }
@@ -280,7 +280,7 @@ $(function() {
 
                         // 发到指定次数，则跳过
                         if (times !== 'nolimit' && famiRecord[user.username] >= times ) {
-                            return famiByPage(++first, last);
+                            return famiByStorey(++first, last);
                         }
 
                         $cc98.fami({
@@ -296,7 +296,7 @@ $(function() {
                                 }
 
                                 if (first < last) {   // 继续发下一层楼
-                                    return famiByPage(++first, last);
+                                    return famiByStorey(++first, last);
                                 } else {    // 本页已发完
                                     return pageDone(curPage);
                                 }
@@ -322,7 +322,7 @@ $(function() {
                         _doFami(thePage);
                     }
 
-                    famiByPage(curStorey, endStorey);
+                    famiByStorey(curStorey, endStorey);
                 }
             });
         };
