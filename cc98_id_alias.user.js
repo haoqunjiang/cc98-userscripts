@@ -6,100 +6,397 @@
 // @author         soda <sodazju@gmail.com>
 // @description    给98增加类新浪微博的ID备注功能
 // @include        http://www.cc98.org/dispbbs.asp*
-// @require        http://file.cc98.org/uploadfile/2013/7/7/1444331657.txt
+// @require        http://libs.baidu.com/jquery/2.0.3/jquery.min.js
 // @run-at         document-end
 // ==/UserScript==
 
-$(function() {
-    var Aliases = function() {
-        var that = {};
-        var dict = JSON.parse(localStorage.getItem('aliases')) || {};
-
-        var flush = function() {
-            localStorage.setItem('aliases', JSON.stringify(dict));
-        };
-        that.flush = flush;
-
-        that.get = function(name) {
-            return dict[name];
-        };
-
-        that.set = function(name, alias) {
-            dict[name] = alias;
-            flush();
-        };
-
-        that.remove = function(name) {
-            delete dict[name];
-            flush();
-        };
-
-        return that;
+// cc98 JavaScript SDK，已去掉不需要的部分
+// Chrome 没有sendAsBinary函数，这里是一个实现
+if (!XMLHttpRequest.prototype.sendAsBinary) {
+    XMLHttpRequest.prototype.sendAsBinary = function(datastr) {
+        function byteValue(x) {
+            return x.charCodeAt(0) & 0xff;
+        }
+        var ords = Array.prototype.map.call(datastr, byteValue);
+        var ui8a = new Uint8Array(ords);
+        this.send(ui8a);
     };
-    var aliases = Aliases();
+}
 
-    function today() {
-        var d = new Date();
-        return (d.getFullYear()) +  ('0' + d.getMonth()).slice(-2) + ('0' + d.getDate()).slice(-2);
+// 辅助函数
+// parseQS, toQS, parseURL, unescapeHTML, ajax, addStyles
+var _lib = {
+
+    // parse the url get parameters
+    parseQS: function(url) {
+        url = url.toLowerCase().split('#')[0];  // remove the hash part
+        var t = url.indexOf('?');
+        var params;
+
+        var hash = {};
+        if (t >= 0) {
+            params = url.substring(t+1).split('&');
+        } else {    // plain query string without '?' (e.g. in cookies)
+            params = url.split('&');
+        }
+        for (var i = 0; i < params.length; ++i) {
+            var val = params[i].split('=');
+            hash[decodeURIComponent(val[0])] = decodeURIComponent(val[1]);
+        }
+        return hash;
+    },
+
+    toQS: function(obj) {
+        var ret = [];
+        for (var key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                if ('' === obj[key]) { continue; }
+                ret.push(encodeURIComponent(key) + '=' + encodeURIComponent(obj[key]));
+            }
+        }
+        return ret.join('&');
+    },
+
+    parseURL: function(url) {
+        // from JavaScript: The Good Parts
+        var parse_url = /^(?:([A-Za-z]+):)?(\/{0,3})([0-9.\-A-Za-z]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?([^#]*))?(?:#(.*))?$/;
+        var arr = parse_url.exec(url);
+        var result = {};
+        result['url'] = arr[0];
+        result['scheme'] = arr[1];
+        result['slash'] = arr[2];
+        result['host'] = arr[3];
+        result['port'] = arr[4];
+        result['path'] = arr[5];
+        result['query'] = arr[6];
+        result['hash'] = arr[7];
+        return result;
+    },
+
+    // 将转义后的html转回来
+    unescapeHTML: function(input) {
+        var e = document.createElement('div');
+        e.innerHTML = input;
+        return e.childNodes.length === 0 ? '' : e.childNodes[0].nodeValue;
+    },
+
+    ajax: function(opts) {
+        opts = {
+            type: opts.type || 'GET',
+            url: opts.url || '',
+            data: opts.data || null,
+            contentType: opts.contentType || 'application/x-www-form-urlencoded; charset=UTF-8',
+            success: opts.success || function() {},
+            async: opts.async || (opts.async === undefined)
+        };
+
+        var xhr = new XMLHttpRequest();
+
+        xhr.open(opts.type, opts.url, opts.async);
+        xhr.setRequestHeader('Content-type', opts.contentType);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                opts.success(xhr.responseText);
+            }
+        };
+        if (opts.contentType === 'application/x-www-form-urlencoded; charset=UTF-8') {
+            xhr.send(_lib.toQS(opts.data));
+        } else {
+            xhr.sendAsBinary(opts.data);
+        }
+    },
+
+    // 添加CSS
+    addStyles: function(css) {
+        var head = document.getElementsByTagName('head')[0];
+        var style = document.createElement('style');
+
+        style.setAttribute('type', 'text/css');
+        style.innerHTML = css;
+        head.appendChild(style);
     }
+};
 
-    var XinlinRecords = function() {
-        var that = {};
-        var records = JSON.parse(localStorage.getItem('xinlin-records')) || [];
+// 98相关的函数接口
+// getPostContent, parseTopicPage, postCount, pageCount, formatURL, currentPage
+var _cc98 = function() {
 
-        var flush = function() {
-            localStorage.setItem('xinlin-records', JSON.stringify(records))
-        };
-        that.flush = flush;
+    var that = {};
 
-        var add = function(url, index, name, alias) {
-            records.push({
-                'url': url,
-                'index': index,
-                'name': name,
-                'last-update': today()
+    // 各种常量
+    var POST_COUNT_RE = /本主题贴数\s*<b>(\d+)<\/b>/ig;
+
+    // 以下三个没有考虑被删除的帖子，因为在当前页解析的时候DisplayDel()和正常的发帖时间之类的会一起出现，导致匹配会乱掉
+    // 因此引起的发米机发米楼层可能不精确的问题也没办法了……
+    var NAME_RE = /(?:name="\d+">| middle;">&nbsp;)\s*<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
+    var ANNOUNCEID_RE = /<a name="(\d{2,})">/g; // 注意网页上<a name="1">之类的标签是作为#1的anchor出现的，所以此处限定至少要两个数字
+    var POST_TIME_RE = /<\/a>\s*([^AP]*[AP]M)\s*<\/td>/g;
+
+    // 获取页面中的用户列表，回帖时间回帖ID
+    // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
+    that.parseTopicPage = function(htmlText) {
+        if (!htmlText) { htmlText = document.body.innerHTML; }
+        var postList = [];
+        
+        var nameArr = htmlText.match(NAME_RE);
+        nameArr.forEach(function(name) {
+            var post = {};
+            post['username'] = name.replace(NAME_RE, '$1');
+            postList.push(post);
+        });
+
+        var idArr = htmlText.match(ANNOUNCEID_RE);
+        // 考虑到心灵没有announceid，所以idArr可能为空
+        if (idArr) {
+            idArr.forEach(function(id, index) {
+                postList[index]['announceid'] = id.replace(ANNOUNCEID_RE, '$1');
             });
-            aliases.set(name, alias);
-            flush();
-        };
-        that.add = add;
+        }
 
-        var remove = function(name) {
-            for (var i = 0; i !== records.length; ++i) {
-                if (records[i]['name'] === name) {
-                    records.splice(i, 1);
-                    break;
+        var timeArr = htmlText.match(POST_TIME_RE);
+        if (timeArr) {
+            timeArr.forEach(function(t, index) {
+                postList[index]['posttime'] = t.replace(POST_TIME_RE, '$1');
+            });
+        }
+
+        return postList;
+    };
+
+    that.postCount = function(htmlText) {
+        if (!htmlText) { htmlText = document.body.innerHTML; }
+        return parseInt(htmlText.match(POST_COUNT_RE)[0].replace(POST_COUNT_RE, '$1'), 10);
+    };
+
+    that.pageCount = function(htmlText) {
+        return Math.ceil(_cc98.postCount(htmlText) / 10);
+    };
+
+    // 格式化网址，去除无用的参数并转为相对链接
+    // @param {string}  url 要格式化的网址
+    // @param {boolean} maxPageFix 是否修正url中star参数的值，使其不超过当前最后页的实际值
+    that.formatURL = function(url, maxPageFix) {
+        var urlObj = _lib.parseURL(url);
+
+        // 不在www.cc98.org域名下
+        if (urlObj['host'] !== 'www.cc98.org') {
+            return url;
+        }
+
+        // http://www.cc98.org/
+        if (!urlObj['path']) {
+            return '/';
+        }
+
+        var params = _lib.parseQS(urlObj['query']);
+        var hash = urlObj['hash'] ? ('#' + urlObj['hash']) : '';
+
+        // 不是dispbbs.asp开头的链接，只去掉空的get参数，转为相对链接，不做其他处理
+        if (urlObj['path'] === 'dispbbs,asp') {
+            return '/' + urlObj['path'] + '?' + _lib.toQS(params) + hash;
+        }
+
+        // 如果不是在追踪页面，就去掉replyid
+        if (!params['trace']) {
+            params['replyid'] = '';
+        }
+        params['page'] = '';    // 去掉page
+
+        // 
+        if (params['star'] && maxPageFix && parseInt(params['star'], 10) > _cc98.pageCount()) {
+            params['star'] = _cc98.pageCount();
+        }
+
+        params['star'] = (params['star'] && params['star'] !== '1') ? params['star'] : '';    // star=1时去掉
+        return '/' + urlObj['path'] + '?' + _lib.toQS(params) + hash;
+    };
+
+    that.currentPage = function() {
+        return parseInt(/<span title="跳转到第\s*(\d+)\s*页/ig.exec(document.body.innerHTML)[1], 10);
+    };
+
+    return that;
+}();
+
+
+$(function() {
+var Aliases = function() {
+    var that = {};
+    var dict = JSON.parse(localStorage.getItem('aliases')) || {};
+
+    var flush = function() {
+        localStorage.setItem('aliases', JSON.stringify(dict));
+    };
+    that.flush = flush;
+
+    that.get = function(name) {
+        return dict[name];
+    };
+
+    that.set = function(name, alias) {
+        dict[name] = alias;
+        flush();
+    };
+
+    that.remove = function(name) {
+        delete dict[name];
+        flush();
+    };
+
+    return that;
+};
+var aliases = Aliases();
+
+function today() {
+    var d = new Date();
+    return (d.getFullYear()) +  ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
+}
+
+var XinlinRecords = function() {
+    var that = {};
+    var records = JSON.parse(localStorage.getItem('xinlin-records')) || [];
+
+    var flush = function() {
+        var n = [];
+        for (var i = 0; i !== records.length; ++i) {
+            if (records[i]['name']) { n.push(records[i]); }
+        }
+        records = n;
+        localStorage.setItem('xinlin-records', JSON.stringify(records))
+    };
+    that.flush = flush;
+
+    var add = function(url, index, name, alias) {
+        records.push({
+            'url': url,
+            'index': index,
+            'name': name,
+            'last-update': today()
+        });
+        aliases.set(name, alias);
+        flush();
+    };
+    that.add = add;
+
+    var remove = function(name) {
+        for (var i = 0; i !== records.length; ++i) {
+            if (records[i]['name'] === name) {
+                records.splice(i, 1);
+                break;
+            }
+        }
+        aliases.remove(name);
+        flush();
+    };
+    that.remove = remove;
+
+    var modify = function(url, index, name, alias) {
+        remove(name);
+        if (!alias) {
+            return;
+        }
+        add(url, index, name, alias);
+        flush();
+    };
+    that.modify = modify;
+
+    var traverse = function(callback) {
+        for (var i = 0; i !== records.length; ++i) {
+            callback.apply(records[i]);
+        }
+        flush();
+    };
+    that.traverse = traverse;
+
+    return that;
+}
+var xinlin = XinlinRecords();
+
+function checkForUpdates() {
+    xinlin.traverse(function() {
+        that = this;
+        if (that['last-update'] === today()) { return; }
+        _lib.ajax({
+            'url': that['url'],
+            'success': function(htmlText) {
+                if (htmlText.indexOf('帖子主题') < 0) { return; }   // 避免出现500、404等错误
+                var postList = _cc98.parseTopicPage(htmlText);
+
+                var oldName = that['name'];
+                var alias = aliases.get(oldName); // 暂存备注
+                var url = that['url'];
+                var index = that['index'];
+
+                // 如果该楼层不存在就删除原记录并（考虑到可能会被删了什么的）（不过并不提醒）
+                if (!postList[index]) {
+                    that['name'] = undefined;
+                } else {
+                    xinlin.remove(oldName);
+                    xinlin.add(url, index, postList[index]['username'], alias);
                 }
             }
-            aliases.remove(name);
-            flush();
-        };
-        that.remove = remove;
-
-        var modify = function(url, index, name, alias) {
-            remove(name);
-            if (!alias) {
-                return;
-            }
-            add(url, index, name, alias);
-            flush();
-        };
-        that.modify = modify;
-
-        var traverse = function(callback) {
-            for (var i = 0; i !=== records.length; ++i) {
-                callback.apply(records[i]);
-                flush();
-            }
-        };
-    }
-    var xinlin = XinlinRecords();
-
-    function checkForUpdates() {
-        xinlin.traverse(function() {
-            if (this['last-update'] === today) {
-                return;
-            }
         });
+    });
+}
+
+function addButtons() {
+    var user = $('img[src="pic/reply.gif"]').parent().parent().parent().parent().parent().parent().prev();
+    var idNode;
+    if (_lib.parseQS(location.search)['boardid'] !== '182') {
+        idNode = user.find('b').parent().parent();
+    } else {
+        idNode = user.find('b').parent();
     }
+    idNode.each(function(index, ele) {
+        var node = $(this);
+        var username = node.find('b').text().trim();
+        var alias = aliases.get(username);
+        var tmp = $('<a class="id-alias" href="javascript:void(0);"></a>');
+
+        if (alias) {
+            tmp.text('[' + alias + ']');
+        } else {
+            tmp.text('[+]');
+            tmp.hide();
+            user.eq(index).hover(function() {
+                tmp.show();
+            }, function() {
+                tmp.hide();
+            });
+        }
+        tmp.click(function() {
+            editAlias(username, index);
+        });
+
+        node.after(tmp);
+    });
+
+    _lib.addStyles('.id-alias { display: inline-block; margin-left: 4px; font-size: 10px }');
+}
+
+function editAlias(username, index) {
+    var url = _cc98.formatURL(location.href, true);
+    var newAlias = prompt('请输入备注名（更新备注后须刷新才能看到）', aliases.get(username) || '');
+    var isXinlin = (_lib.parseQS(location.search)['boardid'] === '182');
+
+    if (newAlias === null) { return; }  // 按了取消
+
+    if (newAlias === '') {
+        if (isXinlin) {
+            xinlin.remove(username);
+        } else {
+            aliases.remove(username);
+        }
+    } else {
+        if (isXinlin) {
+            xinlin.modify(url, index, username, newAlias);
+        } else {
+            aliases.set(username, newAlias);
+        }
+    }
+}
+
+checkForUpdates();
+addButtons();
+
 });
