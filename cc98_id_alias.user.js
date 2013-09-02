@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_id_alias
 // @name           cc98 id alias
-// @version        0.2
+// @version        0.3
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    给98增加类新浪微博的ID备注功能
@@ -257,9 +257,12 @@ var XinlinRecords = function() {
     var records = JSON.parse(localStorage.getItem('xinlin-records')) || [];
 
     var flush = function() {
-        var n = [];
+        var n = [], o = {};
         for (var i = 0; i !== records.length; ++i) {
-            if (records[i]['name']) { n.push(records[i]); }
+            if (records[i]['name'] && !o[records[i]['name']]) {
+                o[records[i]['name']] = true;
+                n.push(records[i]);
+            }
         }
         records = n;
         localStorage.setItem('xinlin-records', JSON.stringify(records))
@@ -300,44 +303,39 @@ var XinlinRecords = function() {
     };
     that.modify = modify;
 
-    var traverse = function(callback) {
+    var update = function(callback) {
         for (var i = 0; i !== records.length; ++i) {
-            callback.apply(records[i]);
+            if (records[i]['last-update'] === today()) { continue; }
+            _lib.ajax({
+                'url': records[i]['url'],
+                'success': function(i) {
+                    return function(htmlText) {
+                        if (htmlText.indexOf('帖子主题') < 0) { return; }   // 避免出现500、404等错误
+                        var postList = _cc98.parseTopicPage(htmlText);
+
+                        var oldName = records[i]['name'];
+                        var alias = aliases.get(oldName); // 暂存备注
+                        var index = records[i]['index'];
+                        var newName = postList[index] ? postList[index]['username'] : undefined;
+
+                        records[i]['name'] = newName;
+                        records[i]['last-update'] = today();
+                        aliases.remove(oldName);
+                        if (newName) {
+                            aliases.set(newName, alias);
+                        }
+                        flush();
+                    }
+                }(i)
+            });
         }
         flush();
     };
-    that.traverse = traverse;
+    that.update = update;
 
     return that;
 }
 var xinlin = XinlinRecords();
-
-function checkForUpdates() {
-    xinlin.traverse(function() {
-        that = this;
-        if (that['last-update'] === today()) { return; }
-        _lib.ajax({
-            'url': that['url'],
-            'success': function(htmlText) {
-                if (htmlText.indexOf('帖子主题') < 0) { return; }   // 避免出现500、404等错误
-                var postList = _cc98.parseTopicPage(htmlText);
-
-                var oldName = that['name'];
-                var alias = aliases.get(oldName); // 暂存备注
-                var url = that['url'];
-                var index = that['index'];
-
-                // 如果该楼层不存在就删除原记录并（考虑到可能会被删了什么的）（不过并不提醒）
-                if (!postList[index]) {
-                    that['name'] = undefined;
-                } else {
-                    xinlin.remove(oldName);
-                    xinlin.add(url, index, postList[index]['username'], alias);
-                }
-            }
-        });
-    });
-}
 
 function addButtons() {
     var user = $('img[src="pic/reply.gif"]').parent().parent().parent().parent().parent().parent().prev();
@@ -371,7 +369,7 @@ function addButtons() {
         node.after(tmp);
     });
 
-    _lib.addStyles('.id-alias { display: inline-block; margin-left: 4px; font-size: 10px }');
+    _lib.addStyles('.id-alias { display: inline-block; margin-left: 2px; font-size: 10px }');
 }
 
 function editAlias(username, index) {
@@ -396,7 +394,7 @@ function editAlias(username, index) {
     }
 }
 
-checkForUpdates();
+xinlin.update();
 addButtons();
 
 });
