@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.5.6
+// @version        0.5.7
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -9,6 +9,8 @@
 // @require        http://libs.baidu.com/jquery/2.0.3/jquery.min.js
 // @run-at         document-end
 // ==/UserScript==
+
+// todo: 增加编辑功能。给原生的回复框加上相对链接、查看原帖、小尾巴。@网址更精确
 
 // 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯_╰)╭
 // 而index表示楼层的序号，0是第一楼，1是第二楼……
@@ -176,7 +178,7 @@ var _cc98 = function() {
     // 以下三个没有考虑被删除的帖子，因为在当前页解析的时候DisplayDel()和正常的发帖时间之类的会一起出现，导致匹配会乱掉
     // 因此引起的发米机发米楼层可能不精确的问题也没办法了……
     var NAME_RE = /(?:name="\d+">| middle;">&nbsp;)\s*<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
-    var ANNOUNCEID_RE = /<a name="(\d{2,})">/g; // 注意网页上<a name="1">之类的标签是作为#0的anchor出现的
+    var ANNOUNCEID_RE = /<a name="(\d{2,})">/g; // 注意网页上<a name="1">之类的标签是作为#1的anchor出现的，所以限定至少两个数字
     var POST_TIME_RE = /<\/a>\s*([^AP]*[AP]M)\s*<\/td>/g;
 
     var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止|>DisplayDel()/ig;
@@ -361,9 +363,7 @@ var _cc98 = function() {
     // @param {string} url 网址
     // @param {Number} storey 楼层[1-9,0]
     // @param {function(postContent)) callback 回调函数
-    that.getPostContent = function(url, storey, callback) {
-        var index;  // 实际索引
-        index = ((storey-1) >= 0) ? (storey-1) : 9;
+    that.getPostContent = function(url, index, callback) {
         _lib.ajax({
             'type': 'GET',
             'url': url,
@@ -575,90 +575,61 @@ var DEFAULT_EMOTIONS = {
     ],
 
     '鱼妹兔': [
-        'http://file.cc98.org/uploadfile/2013/8/16/11153969943.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11154131325.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1113730230.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11154368817.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11154443661.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1113634107.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1113624772.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1113884021.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11131082931.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1113910433.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11131089743.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11131732447.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11131356271.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11131763426.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11131811595.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11131974343.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11131940692.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11132090442.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11132318964.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11132371172.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11132317496.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11132551111.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11132523069.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11132767374.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11132758302.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11132896422.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131811595.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132317496.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11142640805.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11133097063.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11132990664.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11133126148.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11133261117.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11133237215.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11133340678.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11133317981.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11133554005.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11133555473.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11155033691.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11133877409.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11134346095.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11134548155.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11134560576.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11134625044.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11134775107.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11134892987.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11134922863.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11135050228.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11135174922.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11135349466.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11135425151.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132990664.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132896422.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11135565465.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134892987.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134625044.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11144984412.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135050228.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141071306.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11151652647.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153028995.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153733919.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141538787.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11141175296.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1113730230.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1113624772.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1113910433.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133317981.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11154368817.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1113634107.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1113884021.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131089743.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131940692.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132523069.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11132758302.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133237215.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134560576.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134922863.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135174922.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131732447.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135349466.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11135616307.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11135775178.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11135898667.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11153969943.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11135927224.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/1114127403.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/1114559137.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1114644570.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1114980791.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11141071306.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11141175296.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11135425151.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11141283164.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11141389827.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11141498486.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11141538787.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11141663959.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11141888502.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11141997838.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11142037199.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11142528006.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11142640805.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11142875361.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11143720174.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11144984412.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/1115717966.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11151144355.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11151652647.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11153028995.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11152434724.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11153355120.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11144312036.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11151655319.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11152946761.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11153733919.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1115999799.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11152745905.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11153640882.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11145899464.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11152829558.gif',
@@ -669,28 +640,37 @@ var DEFAULT_EMOTIONS = {
         'http://file.cc98.org/uploadfile/2013/8/16/11152020229.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/1115495993.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11152759795.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11153428132.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11144880685.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1115641754.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11151652383.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11153234567.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11143895344.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11145217602.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11151125120.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11152295776.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11153291593.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11151831118.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1115134385.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11145065442.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/1115820488.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11151897893.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11144029838.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11145715222.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11151333598.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/11152646319.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/1117111712.gif',
         'http://file.cc98.org/uploadfile/2013/8/16/1117239341.gif',
-        'http://file.cc98.org/uploadfile/2013/8/16/11174118401.gif'
+        'http://file.cc98.org/uploadfile/2013/8/16/11174118401.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11151333598.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1115134385.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11152946761.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11152745905.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133554005.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134346095.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131974343.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1114980791.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133555473.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11134548155.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11131356271.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11142528006.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11142875361.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11143720174.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/11133126148.gif',
+        'http://file.cc98.org/uploadfile/2013/8/16/1115999799.gif'
     ]
 };
 
@@ -1436,32 +1416,37 @@ function showDialog() {
     var reply_options_html = [
         '<div id="reply_options">',
         '<form id="options_form">',
-                '<h3 id="options_header" class="box_title">',
-                    '回复设置',
+                '<header id="options_header" class="box_title">',
+                    '<b>回复设置</b>',
                     '<span><a id="options_close_btn" class="close_btn" title="关闭"></a></span>',
-                '</h3>',
+                '</header>',
             '<div>',
-                '<label for="prompt-string" class="label-left">原帖链接提示文字</label>',
-                '<input type="text" id="prompt-string">',
+                '<label for="prompt-string" class="desc">原帖链接提示文字</label>',
+                '<div><input type="text" id="prompt-string"></div>',
             '</div>',
             '<div>',
-                '<label for="prompt-color" class="label-left">原帖链接文字颜色</label>',
-                '<input type="text" id="prompt-color">',
+                '<label for="prompt-color" class="desc">原帖链接文字颜色</label>',
+                '<div><input type="text" id="prompt-color"></div>',
             '</div>',
             '<div>',
-                '<label for="reply-tail" class="label-left">回复后缀</label>',
-                '<textarea id="reply-tail"></textarea>',
+                '<label for="reply-tail" class="desc">回复后缀</label>',
+                '<div><textarea id="reply-tail"></textarea></div>',
             '</div>',
             '<div>',
-                '<label for="default-reply-content" class="label-left">默认回复</label>',
-                '<textarea id="default-reply-content"></textarea>',
+                '<label for="default-reply-content" class="desc">默认回复</label>',
+                '<div><textarea id="default-reply-content"></textarea></div>',
             '</div>',
-            '<br>',
+            '<fieldset>',
+            '<legend></legend>',
             '<div>',
                 '<input type="checkbox" id="disable-in-xinlin">',
                 '<label for="disable-in-xinlin" >在心灵之约禁用以上设置</label>',
             '</div>',
+            '</fieldset>',
             '<br>',
+
+            '<fieldset>',
+            '<legend>其他设置</legend>',
             '<div>',
                 '<input type="checkbox" id="use-relative-link">',
                 '<label for="use-relative-link" >使用相对链接</label>',
@@ -1474,8 +1459,11 @@ function showDialog() {
                 '<input type="checkbox" id="always-show-emotions">',
                 '<label for="always-show-emotions">总是显示表情菜单</label>',
             '</div>',
+            '</fieldset>',
+            '<fieldset>',
+            '<legend></legend>',
             '<div>',
-                '<label>快速回复快捷键</label>',
+                '<label class="desc">快速回复快捷键</label>',
                 '<select id="modifier-key">',
                     '<option value="ctrl">Ctrl</option>',
                     '<option value="alt">Alt</option>',
@@ -1483,6 +1471,7 @@ function showDialog() {
                 '<select id="keycode">',
                 '</select>',
             '</div>',
+            '</fieldset>',
             '<br>',
             '<input type="button" id="save_reply_options" class="soda_button" value="保存设置">',
         '</form>',
@@ -1652,7 +1641,7 @@ function addMultiQuote(url, storey) {
 
     url = _cc98.formatURL(url, true);
 
-    _cc98.getPostContent(url, storey, function(content) {
+    _cc98.getPostContent(url, index, function(content) {
         var quoteContent = '[quote][b]以下是引用[i]' + post.username.replace(/匿名\d+/, "匿名") + '在' + post.posttime +
             '[/i]的发言：[/b]\n' + content + '\n[/quote]\n';
 
@@ -1803,7 +1792,7 @@ _lib.addStyles([
         'width: 400px;',
         'border: 1px solid #e0e0e0;',
     '}',
-    '#post_subject:focus { outline: 1px solid #4A8CF7; }',
+    '#post_subject:focus { outline: 1px solid #9AC0E6; }',
 
     '#expression_list {',
         'position: relative;',
@@ -2021,7 +2010,6 @@ _lib.addStyles([
 
         'color: #000;',
         'background-color: #fff;',
-        'opacity: 0.8;',
         'z-index: 200;',
     '}',
     '/* 上传面板的留白要比回复面板的留白稍小，故margin要覆盖定义 */',
@@ -2047,18 +2035,14 @@ _lib.addStyles([
 
     '#reply_options {',
         'border: 0;',
-        'width: 450px;',
+        'width: 400px;',
     '}',
-    '.label-left {',
-        'display: inline-block;',
-        'width: 120px;',
-    '}',
-    '#reply_options input[type="text"], #reply_options textarea {',
-        'width: 300px;',
-   -     'height: 25px;',
-        'font: inherit;',
+    '#reply_options input[type="text"]{',
+        'width: 50%;',
+        'height: 25px;',
     '}',
     '#reply_options textarea {',
+        'width: 80%;',
         'height: 50px;',
         'resize: vertical;',
     '}',
@@ -2098,6 +2082,20 @@ _lib.addStyles([
     '.at-succeed { color: green; }',
     '.at-fail { color: brown; }',
     '.at-complete { color: blue; }',
+    '#reply_options fieldset {',
+        'border: medium none;',
+        'margin: 0;',
+        'padding: 0;',
+    '}',
+    '#reply_options legend {',
+        'font-weight: bold;',
+        'padding: 0 0 10px;',
+    '}',
+    '.desc {',
+        'display: block;',
+        'padding: 5px 0 0;',
+        'font-weight: bold;',
+    '}'
     ].join('\n'));
 
 });
