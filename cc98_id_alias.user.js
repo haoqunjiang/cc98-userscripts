@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_id_alias
 // @name           cc98 id alias
-// @version        0.3
+// @version        0.3.1
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    给98增加类新浪微博的ID备注功能
@@ -249,6 +249,10 @@ var aliases = Aliases();
 
 function today() {
     var d = new Date();
+    // 考虑到98服务器时间有延迟，所以延迟2分钟更新日期
+    if (d.getHours() === 0 && d.getMinutes() <= 1) {
+        d.setDate(d.getDate() - 1);
+    }
     return (d.getFullYear()) +  ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
 }
 
