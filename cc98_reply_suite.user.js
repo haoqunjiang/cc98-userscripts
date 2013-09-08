@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.5.7
+// @version        0.5.8
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -163,7 +163,7 @@ var _lib = {
 
 // 98相关的函数接口，这个脚本中fami和postCount这两个函数都没用到
 // fami, reply, sendPM, upload, getPostContent, parseTopicPage, postCount, pageCount, formatURL, currentPage
-var _cc98 = function() {
+var _cc98 = (function() {
 
     var that = {};
 
@@ -467,9 +467,11 @@ var _cc98 = function() {
     };
 
     return that;
-}();
+})();
 
 
+jq = jQuery.noConflict();   // 防止与98默认jQuery版本的冲突
+(function($) {
 // 实际代码
 $(function() {
 
@@ -2099,3 +2101,4 @@ _lib.addStyles([
     ].join('\n'));
 
 });
+})(jq);
