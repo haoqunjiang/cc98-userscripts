@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.5.8
+// @version        0.5.9
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -1698,16 +1698,10 @@ function addButtons() {
 // 处理各种键盘快捷键
 // 似乎先处理keyCode再处理ctrlKey比较灵敏
 function shortcutHandlers(evt) {
-    // CTRL + M 打开弹出回复框
+    // ALT + R 打开弹出回复框
     var modifierKey = (options.modifierKey === "ctrl") ? evt.ctrlKey : evt.altKey;
     if (evt.keyCode === options.hotKeyCode && modifierKey) {
         showDialog();
-    }
-
-    // ESC 关闭回复框和上传框
-    if (evt.keyCode === 27) {
-        $('#reply_dialog').fadeOut("fast", function(){ $(this).remove(); });
-        $('#upload_panel').fadeOut("fast", function(){ $(this).remove(); });
     }
 
     // CTRL + SHIFT + 0-9 快速引用
@@ -1721,6 +1715,11 @@ function submitShortcut(evt) {
     if (evt.keyCode === 13 && evt.ctrlKey) {
         submit();
     }
+    // ESC 关闭回复框和上传框
+    if (evt.keyCode === 27) {
+        $('#reply_dialog').fadeOut("fast", function(){ $(this).remove(); });
+        $('#upload_panel').fadeOut("fast", function(){ $(this).remove(); });
+    }
 }
 
 // 给界面添加图标
@@ -1728,7 +1727,7 @@ addButtons();
 
 // 绑定快捷键
 $(document).keyup(shortcutHandlers);
-// 似乎很多快捷键必须是keydown才足够灵敏，只好分离出来
+// 似乎很多快捷键必须是keydown才足够灵敏（还能防止中文输入法状态下ESC键太灵敏），只好分离出来
 $(document).keydown(submitShortcut);
 
 _lib.addStyles([
