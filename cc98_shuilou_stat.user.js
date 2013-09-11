@@ -10,9 +10,7 @@
 // ==/UserScript==
 
 (function () {
-    var stat = {};
-
-    function print(str) { console.log(str); }
+    var stat = {}, debut = {};
 
     function $(id) { return document.getElementById(id); }
 
@@ -30,19 +28,23 @@
     }
 
     // parse the url get parameters
-    function qs(url) {
-        url = url.toLowerCase().split("#")[0];
-        var t = url.indexOf("?");
+    function parseQS(url) {
+        url = url.toLowerCase().split('#')[0];  // remove the hash part
+        var t = url.indexOf('?');
+        var params;
+
         var hash = {};
-        if (t > 0) {
-            params = url.substring(t+1).split("&");
-            for (var i = 0; i < params.length; ++i) {
-                var val = params[i].split("=");
-                hash[decodeURIComponent(val[0])] = decodeURIComponent(val[1]);
-            }
+        if (t >= 0) {
+            params = url.substring(t+1).split('&');
+        } else {    // plain query string without '?' (e.g. in cookies)
+            params = url.split('&');
+        }
+        for (var i = 0; i < params.length; ++i) {
+            var val = params[i].split('=');
+            hash[decodeURIComponent(val[0])] = decodeURIComponent(val[1]);
         }
         return hash;
-    };
+    }
 
     function addStyles(css) {
         var head = document.getElementsByTagName("head")[0];
@@ -80,7 +82,7 @@
     };
 
 
-    function view() {
+    function show() {
         var statBtn = document.createElement("a");
         statBtn.id = "do-stat";
         statBtn.href = "javascript: void(0)";
@@ -89,9 +91,16 @@
         var progressMsg = document.createElement("span");
         progressMsg.id = "stat-progress";
         progressMsg.style.color = "red";
+        var maxPageCount = document.createElement("div");
+        maxPageCount.innerHTML = '<input id="thousand-pages-at-max" type="checkbox" checked><label for="thousand-pages-at-max">只统计前1000页</label>'
+        var sortBy = document.createElement("div");
+        sortBy.innerHTML = '<input id="by-count" name="sort-by" type="radio" checked><label for="by-count">按帖数排序</label>\n\
+                            <input id="by-debut" name="sort-by" type="radio"><label for="by-debut">按首次出现排序</label>';
 
         var tmp = xpath("//td/a/img[@src='pic/blue/votenew.gif']")[0].parentNode.parentNode;
         tmp.appendChild(statBtn);
+        tmp.appendChild(sortBy);
+        tmp.appendChild(maxPageCount);
         tmp.appendChild(document.createElement("br"));
         tmp.appendChild(progressMsg);
 
@@ -114,40 +123,48 @@
     }
 
     function doStatistic() {
-        var reForNum = /<span id="topicPagesNavigation">本主题贴数\s*<b>(\d+)<\/b>/g;
-        var num = parseInt((document.documentElement.innerHTML.match(reForNum))[0].replace(reForNum, "$1"));
-        var totalPage = Math.ceil(num / 10);
-        if (totalPage > 1000) totalPage = 1000;
-        var urlParams = qs(window.location.href);
-        for (i = 1; i <= totalPage; ++i) {
-            ajax({
-                type: "GET",
-                url: "http://www.cc98.org/dispbbs.asp?boardid=" + urlParams["boardid"] + "&id=" + urlParams["id"] + "&star=" + i,
-                success: function(text) {
-                    parsePage(text);
-                    $("stat-progress").innerHTML = "正在统计第" + i + "页……";
-                },
-                async: (i >= totalPage - 10 || i % 10 === 0) ? false : true
-            });
+        var postCountRE = /<span id="topicPagesNavigation">本主题贴数\s*<b>(\d+)<\/b>/g;
+        var postCount = parseInt((document.documentElement.innerHTML.match(postCountRE))[0].replace(postCountRE, "$1"));
+        var pageCount = Math.ceil(postCount / 10);
+        var maxPage;
+
+        if (pageCount > 1000 && $("thousand-pages-at-max").checked) {
+            maxPage = 1000;
+        } else {
+            maxPage = pageCount;
         }
-        $("stat-progress").innerHTML = "";
-        showStat();
+
+        var urlParams = parseQS(location.href);
+        (function parsePage(currentPage) {
+            ajax({
+                url: "http://www.cc98.org/dispbbs.asp?boardid=" + urlParams["boardid"] + "&id=" + urlParams["id"] + "&star=" + currentPage,
+                success: function(text) {
+                    $("stat-progress").innerHTML = "正在统计第" + currentPage + "页……";
+                    
+                    var nameRE = /<span style=\"color:\s*\#\w{6}\s*;\"><b>([^<]+)<\/b><\/span>/g;
+                    var spanArr = text.match(nameRE);
+                    spanArr.forEach(function(ele, index, arr) {
+                        var name = ele.replace(nameRE, "$1");
+                        if (stat[name]) {
+                            stat[name] += 1;
+                        } else {
+                            stat[name] = 1;
+                            debut[name] = (currentPage - 1) * 10 + index + 1;
+                        }
+                    });
+
+                    if (currentPage === maxPage) {
+                        $("stat-progress").innerHTML = "";
+                        showResult();
+                    } else {
+                        parsePage(currentPage + 1)
+                    }
+                }
+            });
+        })(1);
     }
 
-    function parsePage(text) {
-        var reForName = /<span style=\"color:\s*\#\w{6}\s*;\"><b>([^<]+)<\/b><\/span>/g;
-        var spanArr = text.match(reForName);
-        spanArr.forEach(function(ele, index, arr) {
-            var name = ele.replace(reForName, "$1");
-            if (stat[name]) {
-                stat[name] += 1;
-            } else {
-                stat[name] = 1;
-            }
-        });
-    }
-
-    function showStat() {
+    function showResult() {
         var mask = document.createElement("div");
         mask.id = "stat-mask";
 
@@ -156,14 +173,27 @@
         var re = document.createElement("div");
         re.style.listStyle = "none";
 
-        var sortedKey = Object.keys(stat).sort(function(a, b) { return stat[b] - stat[a]; });   // descending order
+        var statTable = document.createElement("table");
+        statTable.innerHTML = '<thead><tr><th>帖数排名</th><th>用户名</th><th>帖数</th><th>首次回复</th></tr></thead>';
+        var statBody = document.createElement("tbody");
+
+        var sortedKey;
+        if ($("by-count").checked) {
+            sortedKey = Object.keys(stat).sort(function(a, b) { return (stat[b] - stat[a]) || (debut[a] - debut[b]); });   // descending order
+        } else {
+            sortedKey = Object.keys(debut).sort(function(a, b) { return debut[a] - debut[b]; });   // ascending order
+        }
         sortedKey.forEach(function(ele, index, arr) {
-            var text = document.createTextNode('[' + (index+1) + '] ' + unescapeHTML(ele) + ": " + stat[ele]);
-            re.appendChild(text);
-            re.appendChild(document.createElement('br'))
+            var tr = document.createElement("tr");
+            tr.innerHTML = ('<td>' + ('[' + (index+1) + '] ') + '</td>') 
+                        + ('<td>' + unescapeHTML(ele) + '</td>')
+                        + ('<td>' + stat[ele] + '</td>')
+                        + ('<td>' + debut[ele] + '</td>');
+            statBody.appendChild(tr);
         });
 
-        statDiv.appendChild(re);
+        statTable.appendChild(statBody);
+        statDiv.appendChild(statTable);
 
         document.body.appendChild(mask);
         document.body.appendChild(statDiv);
@@ -183,23 +213,28 @@
             #stat-box {\n\
                 position: absolute;\n\
                 top: 150px;\n\
-                left: 30%;\n\
-                width: 30%;\n\
+                left: 40%;\n\
                 opacity: 0.9;\n\
                 background-color: #F7F9FB;\n\
                 border-radius: 3px;\n\
+                padding: 10px;\n\
                 z-index: 9999;\n\
                 text-align: left;\n\
             }\n\
         ');
+        var ubb = "[table]" + statTable.innerHTML.replace(/<thead>|<\/thead>|<tbody>|<\/tbody>/g, "").replace(/<(\/?t[rhd])>/g, "[$1]") + "[/table]";
+        var textarea = document.createElement("textarea");
+        textarea.style.height = "100px";
+        textarea.textContent = ubb;
+        statDiv.appendChild(textarea);
 
         mask.addEventListener("click", function() {
             document.body.removeChild(mask);
             document.body.removeChild(statDiv);
-        })
+        });
     }
 
-    view();
+    show();
     $("do-stat").addEventListener("click", doStatistic);
 
 })();
