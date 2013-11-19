@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.5.9
+// @version        0.5.11
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -459,6 +459,7 @@ var _cc98 = (function() {
         }
 
         params['star'] = (params['star'] && params['star'] !== '1') ? params['star'] : '';    // star=1时去掉
+        if (params['searchdate'] === 'all') { params['searchdate'] = 'ALL' };
         return '/' + urlObj['path'] + '?' + _lib.toQS(params) + hash;
     };
 
@@ -687,8 +688,6 @@ function storeOptions() {
 // 载入设置
 function loadOptions() {
     options = JSON.parse(localStorage.getItem('reply_options')) || {};
-
-    if (options['version']) { delete options['version']; }  // 去掉之前版本留下来的无用的版本号信息
 
     for (var prop in DEFAULT_OPTIONS) {
         if (options[prop] === undefined) {
@@ -1182,8 +1181,12 @@ function saveDraft() {
 
 // 将content中的URL替换为相对链接
 function makeRelativeURL(content) {
-    return content.replace(/(?:http:\/\/)?www\.cc98\.org\/[&=#%\w\+\.\?]+/g, function(match){
-        return '[url]' + _cc98.formatURL(match) + '[/url]';
+    return content.replace(/(?:\[url=)?(?:http:\/\/)?www\.cc98\.org\/[&=#%\w\+\.\?]+/g, function(match){
+        if (match.indexOf('[url=') !== 0) {
+            return '[url]' + _cc98.formatURL(match) + '[/url]';
+        } else {
+            return '[url=' + _cc98.formatURL(match.substring(5));
+        } 
     });
 }
 
@@ -1260,6 +1263,7 @@ function atUsers() {
 
 // 实际发表回复
 function reply() {
+    // 小表情
     var expr = $('#post_expression').children().eq(0).attr('src');
     expr = expr.substring(expr.lastIndexOf('/') + 1);
 
@@ -1276,6 +1280,8 @@ function reply() {
         "expression": expr,
         "content": $('#post_content').val(),
         "subject": $('#post_subject').val(),
+        "replyid": $('#the_reply_id').val(),
+        "sendsms": $('#notfiy_user_checkbox').prop('checked'),
         "callback": function(html) {
             if (html.indexOf('状态：回复帖子成功') !== -1) {
                 // 回复成功，下一步是处理@信息并刷新页面
@@ -1329,6 +1335,7 @@ function showDialog() {
     var reply_dialog_html = [
         '<div id="reply_dialog">',
         '<form id="replyform">',
+        '<input id="the_reply_id" type="hidden" value="">',
         '<ul id="replytable"width="100%">',
             '<li id="dialog_header">',
                 '<h3 id="replybox_title" class="box_title">',
@@ -1351,6 +1358,10 @@ function showDialog() {
                         '<a id="bold" title="加粗" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22333264497.gif"></a>',
                         '<a id="strikethrough" title="删除线" href="javascript:void(0);"><img class="e_ctrl_btn" src="http://file.cc98.org/uploadfile/2013/8/7/22525420119.png"></a>',
                         '<a id="add_attachments" href="javascript:void(0);">| 添加附件</a>',
+                        '<div id="notfiy_user" style="display:none; float: right; margin: 0px 15px 0px 0px; border-right-width: 0px; padding-right: 0px;">',
+                            '<input type="checkbox" id="notfiy_user_checkbox" style="vertical-align: middle; margin: 0px 2px 0px 0px;">',
+                            '<label style="vertical-align: middle;" for="notfiy_user_checkbox">站短提示 <a id="quoted_username" style="color:blue;" target="_blank" href="javascript:void(0);"></a></label>',
+                        '</div>',
                     '</div>',
 
                     '<textarea id="post_content" role="textbox" aria-multiline="true"></textarea>',
@@ -1606,6 +1617,18 @@ function addQuoteURL(url, storey, quoteContent) {
         '[/color][/url]' + quoteContent.substring(insertIndex);
 }
 
+function showNotifyUser(storey) {
+    var index = ((storey-1) >= 0) ? (storey-1) : 9;
+    var post = _cc98.parseTopicPage()[index];
+    if (!post) { return; }
+
+    $('#notfiy_user').css('display', '');
+
+    $('#quoted_username').attr('href', 'http://www.cc98.org/dispuser.asp?name=' + encodeURIComponent(post['username']))
+                         .text(post['username']);
+    $('#the_reply_id').val(post['announceid']);
+}
+
 // 添加回复内容（这里的storey是1-9再到0,，不是从0开始的）
 function addFastQuote(url, storey) {
     var replyNum = storey + 48;
@@ -1614,6 +1637,7 @@ function addFastQuote(url, storey) {
     }
 
     showDialog();
+    showNotifyUser(storey);
 
     var replyurl = document.getElementById('reply'+replyNum).value;
     $.ajax({
@@ -1633,13 +1657,11 @@ function addFastQuote(url, storey) {
 // 多重引用
 function addMultiQuote(url, storey) {
     showDialog();
+    showNotifyUser(storey);
 
     var index = ((storey-1) >= 0) ? (storey-1) : 9;
     var post = _cc98.parseTopicPage()[index];
-
-    if (!post) {
-        return;
-    }
+    if (!post) { return; }
 
     url = _cc98.formatURL(url, true);
 
@@ -1819,7 +1841,7 @@ _lib.addStyles([
 
         'background-color: #F1F4F8;',
         'border-bottom: 1px solid #9AC0E6;',
-        'padding: 3px 3px 5px 3px;',
+        'padding: 3px;',
     '}',
     'img.e_ctrl_btn {',
         'height: 16px;',
