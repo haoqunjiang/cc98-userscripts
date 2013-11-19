@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.6.0
+// @version        0.6.1
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -9,8 +9,6 @@
 // @require        http://libs.baidu.com/jquery/2.0.3/jquery.min.js
 // @run-at         document-end
 // ==/UserScript==
-
-// todo: 增加编辑功能。给原生的回复框加上相对链接、查看原帖、小尾巴。@网址更精确
 
 // 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯_╰)╭
 // 而index表示楼层的序号，0是第一楼，1是第二楼……
@@ -1618,6 +1616,8 @@ function addQuoteURL(url, storey, quoteContent) {
 }
 
 function showNotifyUser(storey) {
+    if (_lib.parseQS(location.search)['boardid'] === '182') { return; }
+
     var index = ((storey-1) >= 0) ? (storey-1) : 9;
     var post = _cc98.parseTopicPage()[index];
     if (!post) { return; }
