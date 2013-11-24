@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.6.2
+// @version        0.6.3
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -12,8 +12,6 @@
 
 // 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯_╰)╭
 // 而index表示楼层的序号，0是第一楼，1是第二楼……
-
-// 自定义表情部分的代码有点乱，不过够用就算了╮(╯_╰)╭
 
 // Chrome 没有sendAsBinary函数，这里是一个实现
 if (!XMLHttpRequest.prototype.sendAsBinary) {
@@ -1682,7 +1680,7 @@ function addMultiQuote(url, storey) {
 function addButtons() {
 
     // 获取所有「引用」链接
-    $('a[href*="reannounce.asp"]').each(function() {
+    $('a[href*="reannounce.asp"]').each(function(index) {
         var link = $(this);
 
         // 如果是「答复」则跳过
@@ -1697,8 +1695,20 @@ function addButtons() {
             return;
         }
 
+        link.addClass('quote_btn');
+
         link.parent().append('<a href="javascript:void(0);" title="快速引用" class="fastquote_btn"><img src="http://file.cc98.org/uploadfile/2010/4/11/2201680240.png"></a>')
             .append('<a href="javascript:void(0);" title="多重引用" class="multiquote_btn"><img src="http://file.cc98.org/uploadfile/2010/5/12/9395977181.png"></a>');
+    });
+
+    // 原生引用按钮
+    $('.quote_btn').each(function (index) {
+        var storey = (index === 9) ? 0 : (index + 1);
+        $(this).click(function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            addFastQuote(location.href, storey);
+        });
     });
 
     $('.fastquote_btn').each(function (index) {
