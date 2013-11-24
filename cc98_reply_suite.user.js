@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.6.1
+// @version        0.6.2
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -1666,7 +1666,8 @@ function addMultiQuote(url, storey) {
     url = _cc98.formatURL(url, true);
 
     _cc98.getPostContent(url, index, function(content) {
-        var quoteContent = '[quote][b]以下是引用[i]' + post.username.replace(/匿名\d+/, "匿名") + '在' + post.posttime +
+        var isXinlin = (_lib.parseQS(location.search)['boardid'] === '182');
+        var quoteContent = '[quote][b]以下是引用[i]' + (isXinlin ? "匿名" : post.username) + '在' + post.posttime +
             '[/i]的发言：[/b]\n' + content + '\n[/quote]\n';
 
         if (!options.disableInXinlin || _lib.parseQS(location.href)['boardid'] !== '182') {
