@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_id_alias
 // @name           cc98 id alias
-// @version        0.3.1
+// @version        0.4.0
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    给98增加类新浪微博的ID备注功能
@@ -11,6 +11,7 @@
 // ==/UserScript==
 
 // cc98 JavaScript SDK，已去掉不需要的部分
+
 // Chrome 没有sendAsBinary函数，这里是一个实现
 if (!XMLHttpRequest.prototype.sendAsBinary) {
     XMLHttpRequest.prototype.sendAsBinary = function(datastr) {
@@ -218,187 +219,194 @@ var _cc98 = function() {
     return that;
 }();
 
+jq = jQuery.noConflict();   // 防止与98默认jQuery版本的冲突
+
+(function($) {
 
 $(function() {
-var Aliases = function() {
-    var that = {};
-    var dict = JSON.parse(localStorage.getItem('aliases')) || {};
+    var Aliases = function() {
+        var that = {};
+        var dict = JSON.parse(localStorage.getItem('aliases')) || {};
 
-    var flush = function() {
-        localStorage.setItem('aliases', JSON.stringify(dict));
+        var flush = function() {
+            localStorage.setItem('aliases', JSON.stringify(dict));
+        };
+        that.flush = flush;
+
+        that.get = function(name) {
+            return dict[name];
+        };
+
+        that.set = function(name, alias) {
+            dict[name] = alias;
+            flush();
+        };
+
+        that.remove = function(name) {
+            delete dict[name];
+            flush();
+        };
+
+        return that;
     };
-    that.flush = flush;
+    var aliases = Aliases();
 
-    that.get = function(name) {
-        return dict[name];
-    };
-
-    that.set = function(name, alias) {
-        dict[name] = alias;
-        flush();
-    };
-
-    that.remove = function(name) {
-        delete dict[name];
-        flush();
-    };
-
-    return that;
-};
-var aliases = Aliases();
-
-function today() {
-    var d = new Date();
-    // 考虑到98服务器时间有延迟，所以延迟2分钟更新日期
-    if (d.getHours() === 0 && d.getMinutes() <= 1) {
-        d.setDate(d.getDate() - 1);
+    function today() {
+        var d = new Date();
+        // 考虑到98服务器时间有延迟，所以延迟2分钟更新日期
+        if (d.getHours() === 0 && d.getMinutes() <= 2) {
+            d.setDate(d.getDate() - 1);
+        }
+        return (d.getFullYear()) +  ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
     }
-    return (d.getFullYear()) +  ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
-}
 
-var XinlinRecords = function() {
-    var that = {};
-    var records = JSON.parse(localStorage.getItem('xinlin-records')) || [];
+    var XinlinRecords = function() {
+        var that = {};
+        var records = JSON.parse(localStorage.getItem('xinlin-records')) || [];
 
-    var flush = function() {
-        var n = [], o = {};
-        for (var i = 0; i !== records.length; ++i) {
-            if (records[i]['name'] && !o[records[i]['name']]) {
-                o[records[i]['name']] = true;
-                n.push(records[i]);
+        var flush = function() {
+            var n = [], o = {};
+            for (var i = 0; i !== records.length; ++i) {
+                if (records[i]['name'] && !o[records[i]['name']]) {
+                    o[records[i]['name']] = true;
+                    n.push(records[i]);
+                }
             }
-        }
-        records = n;
-        localStorage.setItem('xinlin-records', JSON.stringify(records))
-    };
-    that.flush = flush;
+            records = n;
+            localStorage.setItem('xinlin-records', JSON.stringify(records))
+        };
+        that.flush = flush;
 
-    var add = function(url, index, name, alias) {
-        records.push({
-            'url': url,
-            'index': index,
-            'name': name,
-            'last-update': today()
-        });
-        aliases.set(name, alias);
-        flush();
-    };
-    that.add = add;
+        var add = function(url, index, name, alias) {
+            records.push({
+                'url': url,
+                'index': index,
+                'name': name,
+                'last-update': today()
+            });
+            aliases.set(name, alias);
+            flush();
+        };
+        that.add = add;
 
-    var remove = function(name) {
-        for (var i = 0; i !== records.length; ++i) {
-            if (records[i]['name'] === name) {
-                records.splice(i, 1);
-                break;
+        var remove = function(name) {
+            for (var i = 0; i !== records.length; ++i) {
+                if (records[i]['name'] === name) {
+                    records.splice(i, 1);
+                    break;
+                }
             }
-        }
-        aliases.remove(name);
-        flush();
-    };
-    that.remove = remove;
+            aliases.remove(name);
+            flush();
+        };
+        that.remove = remove;
 
-    var modify = function(url, index, name, alias) {
-        remove(name);
-        if (!alias) {
-            return;
-        }
-        add(url, index, name, alias);
-        flush();
-    };
-    that.modify = modify;
+        var modify = function(url, index, name, alias) {
+            remove(name);
+            if (!alias) {
+                return;
+            }
+            add(url, index, name, alias);
+            flush();
+        };
+        that.modify = modify;
 
-    var update = function(callback) {
-        for (var i = 0; i !== records.length; ++i) {
-            if (records[i]['last-update'] === today()) { continue; }
-            _lib.ajax({
-                'url': records[i]['url'],
-                'success': function(i) {
-                    return function(htmlText) {
-                        if (htmlText.indexOf('帖子主题') < 0) { return; }   // 避免出现500、404等错误
-                        var postList = _cc98.parseTopicPage(htmlText);
+        var update = function(callback) {
+            for (var i = 0; i !== records.length; ++i) {
+                if (records[i]['last-update'] === today()) { continue; }
+                _lib.ajax({
+                    'url': records[i]['url'],
+                    'success': function(i) {
+                        return function(htmlText) {
+                            if (htmlText.indexOf('帖子主题') < 0) { return; }   // 避免出现500、404等错误
+                            var postList = _cc98.parseTopicPage(htmlText);
 
-                        var oldName = records[i]['name'];
-                        var alias = aliases.get(oldName); // 暂存备注
-                        var index = records[i]['index'];
-                        var newName = postList[index] ? postList[index]['username'] : undefined;
+                            var oldName = records[i]['name'];
+                            var alias = aliases.get(oldName); // 暂存备注
+                            var index = records[i]['index'];
+                            var newName = postList[index] ? postList[index]['username'] : undefined;
 
-                        records[i]['name'] = newName;
-                        records[i]['last-update'] = today();
-                        aliases.remove(oldName);
-                        if (newName) {
-                            aliases.set(newName, alias);
+                            records[i]['name'] = newName;
+                            records[i]['last-update'] = today();
+                            aliases.remove(oldName);
+                            if (newName) {
+                                aliases.set(newName, alias);
+                            }
+                            flush();
                         }
-                        flush();
-                    }
-                }(i)
-            });
-        }
-        flush();
-    };
-    that.update = update;
+                    }(i)
+                });
+            }
+            flush();
+        };
+        that.update = update;
 
-    return that;
-}
-var xinlin = XinlinRecords();
-
-function addButtons() {
-    var user = $('img[src="pic/reply.gif"]').parent().parent().parent().parent().parent().parent().prev();
-    var idNode;
-    if (_lib.parseQS(location.search)['boardid'] !== '182') {
-        idNode = user.find('b').parent().parent();
-    } else {
-        idNode = user.find('b').parent();
+        return that;
     }
-    idNode.each(function(index, ele) {
-        var node = $(this);
-        var username = node.find('b').text().trim();
-        var alias = aliases.get(username);
-        var tmp = $('<a class="id-alias" href="javascript:void(0);"></a>');
+    var xinlin = XinlinRecords();
 
-        if (alias) {
-            tmp.text('[' + alias + ']');
+
+    function show() {
+        var user = $('img[src="pic/reply.gif"]').parent().parent().parent().parent().parent().parent().prev();
+        var idNodes;
+        if (_lib.parseQS(location.search)['boardid'] !== '182') {
+            idNodes = user.find('b').parent().parent();
         } else {
-            tmp.text('[+]');
-            tmp.hide();
-            user.eq(index).hover(function() {
-                tmp.show();
-            }, function() {
-                tmp.hide();
-            });
+            idNodes = user.find('b').parent();
         }
-        tmp.click(function() {
-            editAlias(username, index);
+
+        idNodes.each(function(index, ele) {
+            var node = $(this);
+
+            var edit_btn = $('<a class="id-alias" href="javascript:void(0);">[备注]</a>');
+            node.after(edit_btn);
+
+            edit_btn.hide();
+            user.eq(index).hover(function() {
+                edit_btn.show();
+            }, function() {
+                edit_btn.hide();
+            });
+
+            edit_btn.click(function(e) { editAlias(username, index); });
+
+            var namenode = node.find('b');
+            var username = namenode.text().trim();
+            var alias = aliases.get(username);
+            if (alias) {
+                namenode.text(alias);
+            }
+
         });
 
-        node.after(tmp);
-    });
+        _lib.addStyles('.id-alias { display: inline-block; margin-left: 2px; font-size: 10px }');
+    }
 
-    _lib.addStyles('.id-alias { display: inline-block; margin-left: 2px; font-size: 10px }');
-}
+    function editAlias(username, index) {
+        var url = _cc98.formatURL(location.href, true);
+        var newAlias = prompt('请输入备注名（更新备注后须刷新才能看到）', aliases.get(username) || '');
+        var isXinlin = (_lib.parseQS(location.search)['boardid'] === '182');
 
-function editAlias(username, index) {
-    var url = _cc98.formatURL(location.href, true);
-    var newAlias = prompt('请输入备注名（更新备注后须刷新才能看到）', aliases.get(username) || '');
-    var isXinlin = (_lib.parseQS(location.search)['boardid'] === '182');
+        if (newAlias === null) { return; }  // 按了取消
 
-    if (newAlias === null) { return; }  // 按了取消
-
-    if (newAlias === '') {
-        if (isXinlin) {
-            xinlin.remove(username);
+        if (newAlias === '') {
+            if (isXinlin) {
+                xinlin.remove(username);
+            } else {
+                aliases.remove(username);
+            }
         } else {
-            aliases.remove(username);
-        }
-    } else {
-        if (isXinlin) {
-            xinlin.modify(url, index, username, newAlias);
-        } else {
-            aliases.set(username, newAlias);
+            if (isXinlin) {
+                xinlin.modify(url, index, username, newAlias);
+            } else {
+                aliases.set(username, newAlias);
+            }
         }
     }
-}
 
-xinlin.update();
-addButtons();
+    xinlin.update();
+    show();
 
 });
+
+})(jq);
