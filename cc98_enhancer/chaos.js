@@ -6,6 +6,21 @@
 
 window.chaos = {
 
+    /**
+     * Generates a GUID string, according to RFC4122 standards.
+     * @returns {String} The generated GUID.
+     * @example af8a8416-6e18-a307-bd9c-f2c947bbb3aa
+     * @author Slavik Meltser (slavik@meltser.info).
+     * @link http://slavik.meltser.info/?p=142
+     */
+    guid: function() {
+        function _p8(s) {
+            var p = (Math.random().toString(16)+"000000000").substr(2,8);
+            return s ? "-" + p.substr(0,4) + "-" + p.substr(4,4) : p ;
+        }
+        return _p8() + _p8(true) + _p8(true) + _p8();
+    }
+
     // parse the url get parameters
     parseQS: function (url) {
         url = url.toLowerCase().split('#')[0]; // remove the hash part
@@ -83,19 +98,75 @@ window.chaos = {
             async: opts.async || (opts.async === undefined)
         };
 
-        var xhr = new XMLHttpRequest;
+        var xhr = new XMLHttpRequest();
         xhr.open(opts.type, opts.url, opts.async);
-        xhr.setRequestHeader('Content-type', opts.contentType);
+        if (opts.contentType) {
+            xhr.setRequestHeader('Content-type', opts.contentType);
+        }
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 opts.success(xhr.responseText);
             }
         };
+
+        // GET Request
+        if (type === 'GET') {
+            url += opts.data ? ('?' + chaos.toQS(opts.data)) : '';
+            xhr.send();
+            return;
+        }
+
+        // POST Request
         if (opts.contentType === 'application/x-www-form-urlencoded; charset=UTF-8') {
             xhr.send(chaos.toQS(opts.data));
         } else {
             xhr.sendAsBinary(opts.data)
         }
+    },
+
+    get: function (url, data, calllback) {
+        if (typeof data === 'function') {
+            callback = data;
+            data = null;
+        } 
+        this.ajax({
+            type: 'GET',
+            url: url,
+            data: data,
+            success: callback
+        });
+    },
+
+    post: function (url, data, callback) {
+        if (typeof data === 'function') {
+            callback = data;
+            data = null;
+        } 
+        this.ajax({
+            type: 'POST',
+            url: url,
+            data: data,
+            success: callback
+        }); 
+    },
+
+    // @param {string} url sth like 'http://example.com/service?callback={callback}', which is the same as YUI's jsonp function
+    jsonp: function (url, callback) {
+        var proxy = function (response) {
+            callback(response);
+        };
+        var name = chaos.guid();
+        window[name] = proxy;
+
+        var script = document.createElement('script');
+        var url = url.replace('{callback}', name);
+
+        script.src = url;
+        script.onload = function () {
+            document.removeChild(script);
+        };
+
+        document.body.appendChild(script);
     },
 
     // xpath query
