@@ -1,4 +1,9 @@
 // a collection of simple browser-side JavaScript snippets
+
+// todo:
+// shorthand functions(get, post)
+// jsonp
+
 window.chaos = {
 
     // parse the url get parameters
