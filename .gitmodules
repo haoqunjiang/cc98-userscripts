@@ -1,0 +1,3 @@
+[submodule "chaos"]
+	path = chaos
+	url = https://github.com/sodatea/chaos.git
