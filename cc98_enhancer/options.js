@@ -37,4 +37,5 @@ function restoreOptions() {
 }
 
 // 显示选项管理界面
-function showOptionsManager() {}
+function showOptionsManager() {
+}

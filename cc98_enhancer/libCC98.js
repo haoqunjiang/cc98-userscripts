@@ -61,9 +61,6 @@ var CC98URLMap = (function() {})(
     // pmURL 站短
     // loginURL 登录
 
-    // 以下用于 GET
-    // listURL 帖子列表
-    // topicURL 帖子
 );
 
 var libCC98 = (function() {

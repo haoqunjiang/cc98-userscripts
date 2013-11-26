@@ -5,8 +5,8 @@
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
-// @include        http://www.cc98.org/list.asp*
-// @include        http://www.cc98.org/dispbbs.asp*
+// @include        http://www.cc98.org/*
+// @require        http://libs.baidu.com/jquery/2.0.3/jquery.min.js
 // @run-at         document-end
 // ==/UserScript==
 
@@ -26,3 +26,8 @@
 // 在 Scriptish 和 TamperMonkey 下的测试表明 @require meta block 是顺序加载的，所以可以用它来组织代码文件
 // 发布的时候在每个 js 文件后加上时间戳
 // @require chaos.js libcc98.js options.js block.js alias.js
+
+// 在控制面板下增加「cc98 enhancer 选项」条目
+global = unsafeWindow || window;
+global.manage2 += '<br><a id="enhancer-options" href="javascript:void(0)">cc98 enhancer 选项</a>';
+$('#menuDiv').on('click', '#enhancer-options', showOptionsManager);
