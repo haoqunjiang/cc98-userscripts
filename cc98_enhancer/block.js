@@ -1,8 +1,10 @@
-// @require chaos.js
-// @require libcc98.js
-// @require options.js
-// @require jquery
+define('Block', function(exports, module) {
+    var Block = {};
 
-(function() {
-    if (location.pathname !== '/dispbbs.asp' && location.pathname !== '/list.asp') { return; }
-})();
+    var chaos = require('Chaos');
+    var cc98 = require('CC98');
+    var options = require('Options');
+    var $ = require('jQuery');
+
+    module.exports = Block;
+});
