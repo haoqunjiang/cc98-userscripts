@@ -1,72 +1,71 @@
-// @require chaos.js
+define('libcc98', function(exports, module) {
+    var chaos = require('chaos');
+ 
+    // shim (for Chrome)
+    if (!XMLHttpRequest.prototype.sendAsBinary) {
+        XMLHttpRequest.prototype.sendAsBinary = function(datastr) {
+            function byteValue(x) {
+                return x.charCodeAt(0) & 0xff;
+            }
+            var ords = Array.prototype.map.call(datastr, byteValue);
+            var ui8a = new Uint8Array(ords);
+            this.send(ui8a);
+        };
+    }
 
-// shim (for Chrome)
-if (!XMLHttpRequest.prototype.sendAsBinary) {
-    XMLHttpRequest.prototype.sendAsBinary = function (datastr) {
-        function byteValue(x) {
-            return x.charCodeAt(0) & 0xff;
-        }
-        var ords = Array.prototype.map.call(datastr, byteValue);
-        var ui8a = new Uint8Array(ords);
-        this.send(ui8a);
-    };
-}
+    // 从 cookie 中获取
+    var userInfo;
 
-// 从 cookie 中获取
-var userInfo;
+    var CC98URLMap = (function() {})(
+        // 默认文件上传到的版面：论坛帮助
+        // 允许 gif|docx|xlsx|pptx|pdf|xap|jpg|jpeg|png|bmp|rar|txt|zip|mid|rm|doc|mp3
+        var DEFAULT_UPLOAD_BOARDID = 184;
 
-var CC98URLMap = (function() {})(
-    // 默认文件上传到的版面：论坛帮助
-    // 允许 gif|docx|xlsx|pptx|pdf|xap|jpg|jpeg|png|bmp|rar|txt|zip|mid|rm|doc|mp3
-    var DEFAULT_UPLOAD_BOARDID = 184;
+        // 其他文件扩展名与允许上传的boardid的对应列表
+        var file2boardid = {
+            'ipa': 598, // iOS
+            'ppt': 598,
+            'xls': 598,
+            'chm': 598,
+            'wma': 169, // 摇滚和独立音乐
+            'lrc': 169,
+            'asf': 169,
+            'flv': 169,
+            'wmv': 169,
+            'rmvb': 169,
+            'mpg': 169,
+            'avi': 169,
+            'swf': 170, // 史海拾贝
+            'rep': 200, // 星际专区
+            'tar': 212, // Linux天地
+            'gz': 212,
+            'bz2': 212,
+            'tbz': 212,
+            'tgz': 212,
+            'psd': 239, // 贴图工坊
+            'gtp': 308, // 乱弹吉他
+            'gp3': 308,
+            'gp4': 308,
+            'gp5': 308,
+            'torrent': 499, // 多媒体技术
+            'srt': 499
+        };
 
-    // 其他文件扩展名与允许上传的boardid的对应列表
-    var file2boardid = {
-        'ipa': 598, // iOS
-        'ppt': 598,
-        'xls': 598,
-        'chm': 598,
-        'wma': 169, // 摇滚和独立音乐
-        'lrc': 169,
-        'asf': 169,
-        'flv': 169,
-        'wmv': 169,
-        'rmvb': 169,
-        'mpg': 169,
-        'avi': 169,
-        'swf': 170, // 史海拾贝
-        'rep': 200, // 星际专区
-        'tar': 212, // Linux天地
-        'gz': 212,
-        'bz2': 212,
-        'tbz': 212,
-        'tgz': 212,
-        'psd': 239, // 贴图工坊
-        'gtp': 308, // 乱弹吉他
-        'gp3': 308,
-        'gp4': 308,
-        'gp5': 308,
-        'torrent': 499, // 多媒体技术
-        'srt': 499
-    };
+        var baseURL = 'http://www.cc98.org/';
 
-    var baseURL = 'http://www.cc98.org/';
+        // 以下用于 POST
+        // famiURL 发米
+        // uploadURL 上传
+        // postURL 发新帖
+        // replyURL 回复
+        // editURL 编辑
+        // pmURL 站短
+        // loginURL 登录
 
-    // 以下用于 POST
-    // famiURL 发米
-    // uploadURL 上传
-    // postURL 发新帖
-    // replyURL 回复
-    // editURL 编辑
-    // pmURL 站短
-    // loginURL 登录
+    );
 
-);
-
-var libCC98 = (function() {
-
-    var that = {};
-
+    var libcc98 = {};
+/*
     // 发米/扣米
     // @param {string}      opts.url 帖子地址
     // @param {Number}      opts.announceid 回帖ID
@@ -75,7 +74,7 @@ var libCC98 = (function() {
     // @param {boolean}     opts.ismsg  站短/不站短
     // @param {boolean}     [opts.awardtype=true] 是否发米
     // @param {function(responseText)} [opts.callback=function(){}] 回调函数
-    that.fami = function(opts) {
+    libcc98.fami = function(opts) {
         opts.callback = opts.callback || (function() {});
         opts.awardtype = opts.awardtype || (opts.awardtype === undefined);
 
@@ -111,7 +110,7 @@ var libCC98 = (function() {
     // @param {boolean} [opts.viewerfilter] 使用指定用户可见
     // @param {string}  [opts.allowedviewers] 可见用户
     // @param {function(responseText)} [opts.callback=function(){}] 回调函数
-    that.reply = function(opts) {
+    libcc98.reply = function(opts) {
         var params = chaos.parseQS(opts["url"]);
         var postURL = REPLY_URL + "&boardid=" + params["boardid"];
         if (opts["edit"]) {
@@ -126,18 +125,18 @@ var libCC98 = (function() {
         }
 
         var data = {
-                'subject': opts['subject'] || '',
-                'expression': opts['expression'],
-                'content': opts['content'],
-                'followup': opts['edit'] ? params['id'] : (opts['replyid'] || params['id']),
-                'replyid': opts['replyid'] || params['id'],
-                'sendsms': opts['sendsms'] ? '1' : '0',
-                'rootid': params['id'],
-                'star': params['star'] || '1',
-                'passwd': opts['password'],
-                'signflag': 'yes',
-                'enableviewerfilter': opts['viewerfilter'] ? '1' : '',
-            };
+            'subject': opts['subject'] || '',
+            'expression': opts['expression'],
+            'content': opts['content'],
+            'followup': opts['edit'] ? params['id'] : (opts['replyid'] || params['id']),
+            'replyid': opts['replyid'] || params['id'],
+            'sendsms': opts['sendsms'] ? '1' : '0',
+            'rootid': params['id'],
+            'star': params['star'] || '1',
+            'passwd': opts['password'],
+            'signflag': 'yes',
+            'enableviewerfilter': opts['viewerfilter'] ? '1' : '',
+        };
         if (opts['viewerfilter']) {
             data['allowedviewers'] = opts['allowedviewers'] || '';
         }
@@ -155,7 +154,7 @@ var libCC98 = (function() {
     // @param {string}  opts.subject 站短标题
     // @param {string}  opts.message 站短内容
     // @param {function(responseText)} [opts.callback=function(){}] 回调函数
-    that.sendPM = function(opts) {
+    libcc98.sendPM = function(opts) {
         chaos.ajax({
             "type": "POST",
             "url": PM_URL,
@@ -168,34 +167,35 @@ var libCC98 = (function() {
         });
     };
 
-    that.upload = function(file, callback) {
+    libcc98.upload = function(file, callback) {
         var reader = new FileReader();
 
-        var ext = file.name.substring(file.name.lastIndexOf('.') + 1);    // 文件扩展名
+        var ext = file.name.substring(file.name.lastIndexOf('.') + 1); // 文件扩展名
         var boardid = file2boardid[ext] || DEFAULT_UPLOAD_BOARDID;
         var url = 'http://www.cc98.org/saveannouce_upfile.asp?boardid=' + boardid;
 
         reader.onload = function(e) {
             var boundary = '----------------';
-            boundary += parseInt(Math.random()*98989898+1, 10);
-            boundary += parseInt(Math.random()*98989898+1, 10);
+            boundary += parseInt(Math.random() * 98989898 + 1, 10);
+            boundary += parseInt(Math.random() * 98989898 + 1, 10);
 
-            var data = [boundary,'\r\n',
+            var data = [boundary, '\r\n',
                 'Content-Disposition: form-data; name="act"\r\n\r\nupload',
-                '\r\n',boundary,'\r\n',
-                'Content-Disposition: form-data; name="fname"\r\n\r\n',chaos.toUnicode(file.name),
-                '\r\n',boundary,'\r\n',
-                'Content-Disposition: form-data; name="file1"; filename="',chaos.toUnicode(file.name),'"\r\n',
-                'Content-Type: ',file.type,'\r\n\r\n',
+                '\r\n', boundary, '\r\n',
+                'Content-Disposition: form-data; name="fname"\r\n\r\n', chaos.toUnicode(file.name),
+                '\r\n', boundary, '\r\n',
+                'Content-Disposition: form-data; name="file1"; filename="', chaos.toUnicode(file.name), '"\r\n',
+                'Content-Type: ', file.type, '\r\n\r\n',
                 e.target.result,
-                '\r\n',boundary,'\r\n',
-                'Content-Disposition: form-data; name="Submit"\r\n\r\n\xc9\xcf\xb4\xab',  // 上传
-                '\r\n',boundary,'--\r\n'].join('');
+                '\r\n', boundary, '\r\n',
+                'Content-Disposition: form-data; name="Submit"\r\n\r\n\xc9\xcf\xb4\xab', // 上传
+                '\r\n', boundary, '--\r\n'
+            ].join('');
 
             chaos.ajax({
                 'type': 'POST',
                 'url': url,
-                'contentType': 'multipart/form-data; boundary='+boundary,
+                'contentType': 'multipart/form-data; boundary=' + boundary,
                 'data': data,
                 'success': callback
             });
@@ -210,14 +210,14 @@ var libCC98 = (function() {
     // @param {string} url 网址
     // @param {Number} storey 楼层[1-9,0]
     // @param {function(postContent)) callback 回调函数
-    that.getPostContent = function(url, index, callback) {
+    libcc98.getPostContent = function(url, index, callback) {
         chaos.ajax({
             'type': 'GET',
             'url': url,
             'success': function(rawhtml) {
                 var result;
 
-                POST_RE.lastIndex = 0;  // reinitialize the regexp
+                POST_RE.lastIndex = 0; // reinitialize the regexp
                 for (var i = 0; i !== index; ++i) {
                     POST_RE.exec(rawhtml);
                 }
@@ -232,10 +232,12 @@ var libCC98 = (function() {
 
     // 获取页面中的用户列表，回帖时间回帖ID
     // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
-    that.parseTopicPage = function(htmlText) {
-        if (!htmlText) { htmlText = document.body.innerHTML; }
+    libcc98.parseTopicPage = function(htmlText) {
+        if (!htmlText) {
+            htmlText = document.body.innerHTML;
+        }
         var postList = [];
-        
+
         var nameArr = htmlText.match(NAME_RE);
         nameArr.forEach(function(name) {
             var post = {};
@@ -261,19 +263,21 @@ var libCC98 = (function() {
         return postList;
     };
 
-    that.postCount = function(htmlText) {
-        if (!htmlText) { htmlText = document.body.innerHTML; }
+    libcc98.postCount = function(htmlText) {
+        if (!htmlText) {
+            htmlText = document.body.innerHTML;
+        }
         return parseInt(htmlText.match(POST_COUNT_RE)[0].replace(POST_COUNT_RE, '$1'), 10);
     };
 
-    that.pageCount = function(htmlText) {
+    libcc98.pageCount = function(htmlText) {
         return Math.ceil(_cc98.postCount(htmlText) / 10);
     };
 
     // 格式化网址，去除无用的参数并转为相对链接
     // @param {string}  url 要格式化的网址
     // @param {boolean} maxPageFix 是否修正url中star参数的值，使其不超过当前最后页的实际值
-    that.formatURL = function(url, maxPageFix) {
+    libcc98.formatURL = function(url, maxPageFix) {
         var urlObj = chaos.parseURL(url);
 
         // 不在www.cc98.org域名下
@@ -298,21 +302,24 @@ var libCC98 = (function() {
         if (!params['trace']) {
             params['replyid'] = '';
         }
-        params['page'] = '';    // 去掉page
+        params['page'] = ''; // 去掉page
 
         // 
         if (params['star'] && maxPageFix && parseInt(params['star'], 10) > _cc98.pageCount()) {
             params['star'] = _cc98.pageCount();
         }
 
-        params['star'] = (params['star'] && params['star'] !== '1') ? params['star'] : '';    // star=1时去掉
-        if (params['searchdate'] === 'all') { params['searchdate'] = 'ALL' };
+        params['star'] = (params['star'] && params['star'] !== '1') ? params['star'] : ''; // star=1时去掉
+        if (params['searchdate'] === 'all') {
+            params['searchdate'] = 'ALL'
+        };
         return '/' + urlObj['path'] + '?' + chaos.toQS(params) + hash;
     };
 
-    that.currentPage = function() {
+    libcc98.currentPage = function() {
         return parseInt(/<span title="跳转到第\s*(\d+)\s*页/ig.exec(document.body.innerHTML)[1], 10);
     };
+*/
 
-    return that;
-})();
+    return libcc98;
+})

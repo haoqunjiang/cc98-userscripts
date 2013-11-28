@@ -1,3 +1,8 @@
+#!/usr/bin/env node
+
+// todo: migrate to grunt
+
+var exec = require('child_process').exec;
 var qiniu = require('node-qiniu');
 
 qiniu.config({
@@ -11,8 +16,9 @@ var done = 0;
 
 // todo:
 // 1. add timestamp for upload key
-// 2. add comparison in order to avoid redundancy
-// 3. add a function to modify cc98_enhancer.user.js
+// 2. add js-beautify
+// 3. add comparison in order to avoid redundancy
+// 4. add a function to modify cc98_enhancer.user.js
 
 for (var i in dependencies) {
     var path = dependencies[i];
@@ -33,3 +39,13 @@ for (var i in dependencies) {
             }
         });
 }
+
+/*
+var dependencies = ['../chaos/chaos.js', 'libCC98.js', 'block.js', 'alias.js', 'emotions.js', 'options.js'];
+for (var i in dependencies) {
+    var path = dependencies[i];
+    var filename = path.split('/').pop();
+
+    var child = exec('js-beautify -r ' + path, function() {});
+}
+*/

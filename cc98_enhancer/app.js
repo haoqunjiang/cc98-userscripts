@@ -1,23 +1,23 @@
-define('App', function(exports, module) {
-    var App = {};
-    var options = require('Options');
-    var chaos = require('Chaos');
+define('app', function(exports, module) {
+    var app = {};
+    var options = require('options');
+    var chaos = require('chaos');
 
     var isTopicList = (location.pathname === '/list.asp');
     var isThreadList = (location.pathname === '/dispbbs.asp');
     var isXinlin; = (location.search)
 
-    App.route = function(cond, func) {
+    app.route = function(cond, func) {
         if (cond) { func(); }
     };
 
-    App.init = function() {
-        App.route(true, options.init());  // 给每个界面加上选项菜单
-        App.route(isTopicList, )
+    app.init = function() {
+        app.route(true, options.init());  // 给每个界面加上选项菜单
+        app.route(isTopicList, )
     };
 
-    module.exports = App;
+    module.exports = app;
 });
 
-var app = require('App');
+var app = require('app');
 app.init();

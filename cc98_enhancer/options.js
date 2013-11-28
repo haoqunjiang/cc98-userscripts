@@ -1,4 +1,4 @@
-define('Options', function(exports, module) {
+define('options', function(exports, module) {
     // 用户实际存下来的 Options 数据
     var options = {};
     // 默认选项
@@ -47,7 +47,10 @@ define('Options', function(exports, module) {
         return options[key];
     }
 
-    Options.set = function
+    Options.set = function(key, value) {
+        options[key] = value;
+        Options.save();
+    }
 
     Options.show = function() {
         // 覆盖整个页面的遮罩层、绝对定位的选项卡（50%~80% width）
