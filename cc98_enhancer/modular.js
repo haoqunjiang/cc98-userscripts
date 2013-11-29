@@ -8,7 +8,11 @@
     // @usage: define('id', function(exports, module) {});
     global.define = function(id, func) {
         modules[id] = {};
-        modules[id].factory = func;
+        if (func instanceof Function) {
+            modules[id].factory = func;
+        } else {
+            modules[id].exports = func;
+        }
     };
 
     // @usage: var a = require('id');
@@ -16,7 +20,7 @@
         if (cached[id]) {
             return cached[id];
         } else {
-            return cached[id] = modules[id].factory(modules[id].exports = {}, modules[id]) || modules[id].exports;
+            return cached[id] = modules[id].exports || modules[id].factory(modules[id].exports = {}, modules[id]);
         }
     };
 })(this);

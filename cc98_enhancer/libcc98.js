@@ -1,5 +1,10 @@
 define('libcc98', function(exports, module) {
+    var Q = require('Q');
     var chaos = require('chaos');
+    // 不用 jQuery 的 ajax 而用自己写的 q-http 模块
+    // 一则因为 jquery.min.js 达 87k，远大于 Q 的大小（YUI 压缩后 17k）
+    // 二则是为了练手
+    var http = require('q-http');
  
     // shim (for Chrome)
     if (!XMLHttpRequest.prototype.sendAsBinary) {
@@ -53,18 +58,79 @@ define('libcc98', function(exports, module) {
 
         var baseURL = 'http://www.cc98.org/';
 
-        // 以下用于 POST
-        // famiURL 发米
-        // uploadURL 上传
-        // postURL 发新帖
-        // replyURL 回复
-        // editURL 编辑
-        // pmURL 站短
-        // loginURL 登录
+        var that = {};
 
+        // 发米
+        that.famiURL = function() {
+            return 'http://www.cc98.org/master_users.asp?action=award';
+        }
+
+        // 上传
+        that.uploadURL = function(boardid) {
+            return 'http://www.cc98.org/saveannouce_upfile.asp?boardid=' + boardid;
+        }
+
+        // postURL 发新帖
+
+        // 回复
+        that.replyURL = function(boardid) {
+            return 'http://www.cc98.org/SaveReAnnounce.asp?method=Topic&boardid=' + boardid;
+        }
+
+        // 编辑
+        that.editURL = function(boardid, id, replyid) {
+            return 'http://www.cc98.org/SaveditAnnounce.asp?boardid=' + boardid + '&id=' + id + '&replyid=' + replyid;
+        }
+
+        // 站短
+        that.pmURL = function() {
+            return 'http://www.cc98.org/messanger.asp?action=send';
+        }
+
+        // 登录
+        that.loginURL = function() {
+            return 'http://www.cc98.org/login.asp';
+        }
     );
 
+    var parseTopicList = function(html) {};
+    var parseThreadList = function(html) {};
+
     var libcc98 = {};
+
+    libcc98.getTopicList = function(url, callback) {
+        var deferred, promise;
+
+        if (callback instanceof Function) {
+            libcc98.getTopicList(url).then(callback);
+        }
+
+        if (chaos.parseURL(url)['path'] !== 'list.asp') {
+            return;
+        }
+
+        if (url === location.href) {
+            deferred = Q.defer();
+            promise = deferred.promise.then(parseTopicList);
+            deferred.resolve(); // 不传任何返回值到 parseTopicList，用来告知它现在是在解析当前页
+        } else {
+            promise = http.get(url, parseTopicList);
+        }
+
+        return promise;
+    };
+
+    libcc98.getThreadList = function(url, callback) {
+        var deferred = Q.defer();
+
+        if (callback instanceof Function) {
+            libcc98.getThreadList(url).then(callback);
+        }
+
+        if (chaos.parseURL(url)['path'] !== 'dispbbs.asp') {
+            return;
+        }
+    };
 /*
     // 发米/扣米
     // @param {string}      opts.url 帖子地址
