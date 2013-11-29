@@ -9,7 +9,7 @@
 
 ##lib 目录下的文件##
 
-1. intro.js 入口文件，包括油猴脚本的 meta 信息和闭包的开口
+1. intro.js 入口文件，包括油猴脚本的 meta 信息和匿名闭包的开口
 2. modular.js 自定义的简化的 define/require 函数
 3. modular-shim 给项目引入的第三方库适配上 define/require 接口
 4. q-http.js 利用 Q 的 Promise/A+ 实现的浏览器端 http 库
