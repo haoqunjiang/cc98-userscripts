@@ -1,13 +1,20 @@
-module.export = function(grunt) {
+module.exports = function(grunt) {
     grunt.initConfig({
+        jsbeautifier: {
+            files: ['lib/*.js']
+        },
         concat: {
-            options: {},
+            options: {
+                separator: '\n\n',
+            },
             dist: {
-                src: ['intro.js', '../chaos/chaos.js', 'modular.js', 'modular-shim.js', 'q-http', 'libcc98.js', 'options.js', 'utils.js', 'alias.js', 'emotions.js', 'editor.js', 'app.js', 'outro.js'],
+                src: ['lib/intro.js', '../chaos/chaos.js', 'lib/modular.js', 'lib/modular-shim.js', 'lib/q-http',
+                    'lib/libcc98.js', 'lib/options.js', 'lib/utils.js', 'lib/alias.js', 'lib/emotions.js', 'lib/editor.js', 'lib/app.js', 'lib/outro.js'],
                 dest: 'cc98_enhancer.js',
             },
         },
     });
+    grunt.loadNpmTasks('grunt-jsbeautifier');
     grunt.loadNpmTasks('grunt-contrib-concat');
-    grunt.registerTask('default', ['concat']);
+    grunt.registerTask('default', ['jsbeautifier', 'concat']);
 };
