@@ -21,7 +21,7 @@ define('libcc98', function(exports, module) {
         }
 
         // for test
-        // return dom.querySelector('input[type="submit"]');
+        return dom.querySelectorAll('tr[style="vertical-align: middle;"]');
     };
     var parseThreadList = function(html) {};
 

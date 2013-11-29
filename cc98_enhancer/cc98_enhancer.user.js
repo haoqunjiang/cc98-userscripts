@@ -415,6 +415,9 @@ define('q-http', {
 });
 
 
+
+
+
 define('CC98URLMap', function(exports, module) {
     // 默认文件上传到的版面：论坛帮助
     // 允许 gif|docx|xlsx|pptx|pdf|xap|jpg|jpeg|png|bmp|rar|txt|zip|mid|rm|doc|mp3
@@ -515,7 +518,8 @@ define('libcc98', function(exports, module) {
             dom.documentElement.innerHTML = html;
         }
 
-        return dom.querySelector('input[type="submit"]');
+        // for test
+        return dom.querySelectorAll('tr[style="vertical-align: middle;"]');
     };
     var parseThreadList = function(html) {};
 
