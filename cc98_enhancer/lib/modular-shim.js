@@ -4,14 +4,15 @@
 // q.js 也与不能直接用于自定义的 define/require
 // 故为了保持接口的一致性增加了这两句（考虑到这些库都已经放到了全局命名空间，所以这真的仅仅是为了看上去模块化一点）
 
-define('chaos', function(exports, module) {
-    module.exports = chaos;
-});
+_chaos = chaos;
+define('chaos', _chaos);
 
+// 因为 jQuery 对象是一个函数，直接作为参数传入的话会导致它被当作一个 factory 函数运行，所以只能 return
 define('jQuery', function(exports, module) {
     return jQuery.noConflict();
 });
 
+// Q 同 jQuery
 define('Q', function(exports, module) {
     return Q;
 });

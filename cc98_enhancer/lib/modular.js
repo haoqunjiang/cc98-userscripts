@@ -19,7 +19,7 @@
         if (cached[id]) {
             return cached[id];
         } else {
-            return cached[id] = modules[id].exports || modules[id].factory(modules[id].exports = {}, modules[id]);
+            return cached[id] = (modules[id].exports || modules[id].factory(modules[id].exports = {}, modules[id]) || modules[id].exports);
         }
     };
 })(this);

@@ -35,7 +35,7 @@ define('options', function(exports, module) {
         // 如果新增了默认配置项，则加入到原配置中
         for (var prop in DEFAULT_OPTIONS) {
             if (options[prop] === undefined) {
-                options[prop] = DEFAULT_Options[prop];
+                options[prop] = DEFAULT_OPTIONS[prop];
             }
         }
         Options.save(options);
@@ -65,6 +65,7 @@ define('options', function(exports, module) {
 
     Options.init = function() {
         var options = Options.restore();
+        var $ = require('jQuery');
 
         (unsafeWindow ? unsafeWindow : window).manage2 += '<br><a id="enhancer-options" href="javascript:void(0)">cc98 enhancer 选项</a>';
         $('#menuDiv').on('click', '#enhancer-options', Options.show);

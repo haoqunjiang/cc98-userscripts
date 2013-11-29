@@ -8,9 +8,9 @@ module.exports = function(grunt) {
                 separator: '\n\n',
             },
             dist: {
-                src: ['lib/intro.js', '../chaos/chaos.js', 'lib/modular.js', 'lib/modular-shim.js', 'lib/q-http',
+                src: ['lib/intro.js', '../chaos/chaos.js', 'lib/modular.js', 'lib/modular-shim.js', 'lib/q-http.js', 'lib/CC98URLMap.js',
                     'lib/libcc98.js', 'lib/options.js', 'lib/utils.js', 'lib/alias.js', 'lib/emotions.js', 'lib/editor.js', 'lib/app.js', 'lib/outro.js'],
-                dest: 'cc98_enhancer.js',
+                dest: 'cc98_enhancer.user.js',
             },
         },
     });

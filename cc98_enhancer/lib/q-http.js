@@ -63,7 +63,8 @@ define('q-http', {
 
     get: function(url, data, success, error) {
         if (typeof data === 'function') {
-            callback = data;
+            error = success;
+            success = data;
             data = null;
         }
         return this.ajax({
@@ -75,9 +76,10 @@ define('q-http', {
         });
     },
 
-    post: function(url, data, callback) {
+    post: function(url, data, success, error) {
         if (typeof data === 'function') {
-            callback = data;
+            error = success;
+            success = data;
             data = null;
         }
         return this.ajax({
