@@ -8,7 +8,7 @@ define('utils', function(exports, module) {
 
     var blocked_users = options.get('blocked_users');
 
-    utils.blockTopic = function() {
+    utils.blockTopics = function() {
         var topics = libcc98.getTopicList();
 
         topics.forEach(function(topic) {
@@ -23,7 +23,7 @@ define('utils', function(exports, module) {
         });
     };
 
-    utils.blockThread = function() {};
+    utils.blockThreads = function() {};
 
     module.exports = utils;
 });
