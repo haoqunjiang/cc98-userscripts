@@ -401,10 +401,8 @@ define('libcc98', function(exports, module) {
     var $ = require('jQuery');
     var CC98URLMap = require('CC98URLMap');
 
-    var libcc98 = {};
-
     // 从 cookie 中获取有效信息
-    libcc98.info = (function() {
+    var info = (function() {
         var that = {};
         var cookieObj = chaos.parseCookies(document.cookie);
         var aspsky = chaos.parseQS(cookieObj['aspsky']);
@@ -416,11 +414,66 @@ define('libcc98', function(exports, module) {
         return that;
     })();
 
-    libcc98.getTopicList = function(url, callback) {
+    var parseTopicList = function(html) {
+        var doc;
+        var topicsDOM;
+        var topics = [];
+
+        if (!html) {
+            doc = document;
+        } else {
+            doc = document.implementation.createHTMLDocument('');
+            doc.documentElement.innerHTML = html;
+        }
+
+        topicsDOM = $(doc).find('tr[style="vertical-align: middle;"]');
+
+        topics = topicsDOM.filter(function(index) {
+            // 对简版的修正
+            if (info.isSimple && index === 0) {
+                return false;
+            } else {
+                return true;
+            }
+        }).map(function(index, ele) {
+            var topic = {};
+
+            var tr = $(ele);
+
+            topic.DOM = ele;
+            topic.type = info.isSimple ? tr.children().first().text().trim() : tr.children().children().first().attr('title');
+            topic.href = tr.children().eq(1).children('a').attr('href');
+            topic.title = tr.children().eq(1).children('a').children().eq(0).text();
+            topic.author = tr.children().eq(2).children().eq(0).text() || '匿名';
+            topic.lastReplyTime = tr.children().eq(4).children().eq(0).text();
+            topic.lastReplyUser = JSON.parse(tr.next().text().replace(/.*'{(.*)}'.*/g, '{$1}'))['usr'];
+
+            return topic;
+        }).toArray();
+
+        return topics;
+    };
+
+    var parseThreadList = function(html) {
+        var doc;
+        var threadsDOM;
+        var threads = [];
+
+        if (!html) {
+            doc = document;
+        } else {
+            doc = document.implementation.createHTMLDocument('');
+            doc.documentElement.innerHTML = html;
+        }
+
+        return threads;
+    };
+
+    var getTopicList = function(url, callback) {
         var deferred, promise;
 
         if (callback instanceof Function) {
-            libcc98.getTopicList(url).then(callback);
+            getTopicList(url).then(callback);
         }
 
         if (url && chaos.parseURL(url)['path'] !== 'list.asp') {
@@ -441,11 +494,11 @@ define('libcc98', function(exports, module) {
         return promise;
     };
 
-    libcc98.getThreadList = function(url, callback) {
+    var getThreadList = function(url, callback) {
         var deferred = $.Deferred();
 
         if (callback instanceof Function) {
-            libcc98.getThreadList(url).then(callback);
+            getThreadList(url).then(callback);
         }
 
         if (url && chaos.parseURL(url)['path'] !== 'dispbbs.asp') {
@@ -466,78 +519,19 @@ define('libcc98', function(exports, module) {
         return promise;
     };
 
-    function parseTopicList(html) {
-        var doc;
-        var topicsDOM;
-        var topics = [];
-
-        if (!html) {
-            doc = document;
-        } else {
-            doc = document.implementation.createHTMLDocument('');
-            doc.documentElement.innerHTML = html;
-        }
-
-        topicsDOM = $(doc).find('tr[style="vertical-align: middle;"]');
-
-        topics = topicsDOM.filter(function(index) {
-            // 对简版的修正
-            if (libcc98.info.isSimple && index === 0) {
-                return false;
-            } else {
-                return true;
-            }
-        }).map(function(index, ele) {
-            var topic = {};
-
-            var tr = $(ele);
-
-            topic.DOM = ele;
-            topic.type = libcc98.info.isSimple ? tr.children().first().text().trim() : tr.children().children().first().attr('title');
-            topic.href = tr.children().eq(1).children('a').attr('href');
-            topic.title = tr.children().eq(1).children('a').children().eq(0).text();
-            topic.author = tr.children().eq(2).children().eq(0).text() || '匿名';
-            topic.lastReplyTime = tr.children().eq(4).children().eq(0).text();
-            topic.lastReplyUser = JSON.parse(tr.next().text().replace(/.*'{(.*)}'.*/g, '{$1}'))['usr'];
-
-            return topic;
-        }).toArray();
-
-        // 对简版的修正
-        if (libcc98.isSimple) {
-            topics.splice(0, 1);
-        }
-
-        return topics;
-    };
-
-    function parseThreadList(html) {
-        var doc;
-        var threadsDOM;
-        var threads = [];
-
-        if (!html) {
-            doc = document;
-        } else {
-            doc = document.implementation.createHTMLDocument('');
-            doc.documentElement.innerHTML = html;
-        }
-
-        return threads;
-    };
 
     var log = function() {
         console.log.apply(console, arguments);
     }
-    libcc98.test = function() {
+    var test = function() {
 
         // 普通版面
-        libcc98.getTopicList('http://www.cc98.org/list.asp?boardid=81').then(function(topics) {
+        getTopicList('http://www.cc98.org/list.asp?boardid=81').then(function(topics) {
             log('情感空气第 10 个帖子（包括置顶）');
             log(topics[9]);
         });
         // 心灵
-        libcc98.getTopicList('http://www.cc98.org/list.asp?boardid=182').then(function(topics) {
+        getTopicList('http://www.cc98.org/list.asp?boardid=182').then(function(topics) {
             log('心灵之约置顶帖首位');
             log(topics[0]); //置顶帖
             log('心灵之约第 10 个帖子（包括置顶）');
@@ -545,7 +539,7 @@ define('libcc98', function(exports, module) {
         });
 
         // 被锁定版面
-        libcc98.getTopicList('http://www.cc98.org/list.asp?boardid=537').then(function(topics) {
+        getTopicList('http://www.cc98.org/list.asp?boardid=537').then(function(topics) {
             log('暑假版第 10 个帖子（包括置顶）');
             log(topics[9]);
         });
@@ -555,37 +549,37 @@ define('libcc98', function(exports, module) {
 
         /*
         // 普通帖子
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=186&id=4108287').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=186&id=4108287').then(function(threads) {
             log('测试普通帖子');
             log(threads[1]);
         });
 
         // 蓝名用户
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=357&ID=3469578').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?boardID=357&ID=3469578').then(function(threads) {
             log('测试红名用户');
             log(threads[0]);
         });
 
         // 红名用户
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=4292487').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=4292487').then(function(threads) {
             log('测试红名用户');
             log(threads[0]);
         });
 
         // 被锁定帖子
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=17&ID=4292545').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?boardID=17&ID=4292545').then(function(threads) {
             log('测试被锁定帖子');
             log(threads[1]);
         });
 
         // 心灵帖子
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=182&ID=4238943').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?boardID=182&ID=4238943').then(function(threads) {
             log('测试心灵帖子');
             log(threads[1]);
         });
 
         // 回复可见（不可见）
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=182&ID=3652234').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?boardID=182&ID=3652234').then(function(threads) {
             log('回复可见帖子首楼');
             log(threads[0]); // 1 楼，在回复可见出现前
             log('回复可见的帖子回复');
@@ -595,13 +589,13 @@ define('libcc98', function(exports, module) {
         });
 
         // 回复可见（可见）
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=3705020').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=3705020').then(function(threads) {
             log('回复可见帖子中的可见帖');
             log(threads[1]);
         });
 
         // 被删除帖子
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=144&id=4133896').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=144&id=4133896').then(function(threads) {
             log('测试被删除帖子');
             log('被删除的楼');
             log(threads[6]);
@@ -610,7 +604,7 @@ define('libcc98', function(exports, module) {
         });
 
         // 楼主可见
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=2805301').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=2805301').then(function(threads) {
             log('测试楼主可见');
             log('可见帖');
             log(threads[0]);
@@ -619,37 +613,37 @@ define('libcc98', function(exports, module) {
         });
 
         // 指定用户可见（当前用户不可见）
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=144&id=4133896&star=597').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=144&id=4133896&star=597').then(function(threads) {
             log('测试指定用户可见（当前用户不可见）');
             log(threads[0]);
         });
 
         // 指定用户可见（当前用户可见）
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=144&id=4014074&star=288').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=144&id=4014074&star=288').then(function(threads) {
             log('测试指定用户可见（当前用户可见）');
             log(threads[9]);
         });
 
         // 投票
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=4285186').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=4285186').then(function(threads) {
             log('测试投票帖');
             log(threads[0])
         });
 
         // 被屏蔽的用户
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=622&ID=3720912').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?boardID=622&ID=3720912').then(function(threads) {
             log('测试被屏蔽用户');
             log(threads[0]);
         });
 
         // 该用户不存在
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=357&ID=3469578').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?boardID=357&ID=3469578').then(function(threads) {
             log('测试已不存在的用户');
             log(threads[0]);
         });
 
         // 心灵匿名/不匿名混合贴
-        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=182&id=153389&star=9').then(function(threads) {
+        getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=182&id=153389&star=9').then(function(threads) {
             log('测试心灵匿名/不匿名混合贴');
             log(threads[0]);
             log(threads[1]);
@@ -657,9 +651,17 @@ define('libcc98', function(exports, module) {
         });
 
         // 追踪页面（由于链接有时效性，故暂略）
-        // libcc98.getThreadList('').then(function(threads) {});
+        // getThreadList('').then(function(threads) {});
 */
     };
+
+
+    var libcc98 = {};
+
+    libcc98.info = info;
+    libcc98.getTopicList = getTopicList;
+    libcc98.getThreadList = getThreadList;
+    libcc98.test = test;
 
     return libcc98;
 });
