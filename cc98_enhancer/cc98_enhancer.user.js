@@ -7,7 +7,6 @@
 // @description    
 // @include        http://www.cc98.org/*
 // @require        http://libs.baidu.com/jquery/2.0.3/jquery.min.js
-// @require        http://soda-test-space.u.qiniudn.com/q.min.js
 // @run-at         document-end
 // ==/UserScript==
 
@@ -28,8 +27,13 @@
 
 
 // a collection of simple browser-side JavaScript snippets
-
-var chaos = {
+(function (definition){
+    if (typeof define === "function" && define.amd) {
+        define(definition);
+    } else {
+        chaos = definition;
+    }
+})({
 
     /**
      * Generates a GUID string, according to RFC4122 standards.
@@ -270,7 +274,7 @@ var chaos = {
         }
         return total;
     }
-};
+});
 
 
 // simple helper functions to help write modular JavaScript
@@ -303,7 +307,6 @@ var chaos = {
 // 本项目中用了自定义的 define 和 require 函数
 // 而 chaos.js 本身并不是模块化的
 // jQuery 仅支持 AMD 规范的模块加载
-// q.js 也与不能直接用于自定义的 define/require
 // 故为了保持接口的一致性增加了这两句（考虑到这些库都已经放到了全局命名空间，所以这真的仅仅是为了看上去模块化一点）
 
 _chaos = chaos;
@@ -313,109 +316,6 @@ define('chaos', _chaos);
 define('jQuery', function(exports, module) {
     return jQuery.noConflict();
 });
-
-// Q 同 jQuery
-define('Q', function(exports, module) {
-    return Q;
-});
-
-
-// a browser-side http library using Q libray to implement promise
-define('q-http', {
-    ajax: function(opts) {
-        opts = {
-            type: opts.type || 'GET',
-            url: opts.url || '',
-            data: opts.data || null,
-            contentType: opts.contentType || 'application/x-www-form-urlencoded; charset=UTF-8',
-            success: opts.success || function() {},
-            error: opts.error || function() {},
-            async: opts.async || (opts.async === undefined)
-        };
-
-        var chaos = require('chaos');
-        var Q = require('Q');
-
-        var deferred = Q.defer();
-
-        // Chrome 没有sendAsBinary函数，这里是一个实现
-        if (!XMLHttpRequest.prototype.sendAsBinary) {
-            XMLHttpRequest.prototype.sendAsBinary = function(datastr) {
-                function byteValue(x) {
-                    return x.charCodeAt(0) & 0xff;
-                }
-                var ords = Array.prototype.map.call(datastr, byteValue);
-                var ui8a = new Uint8Array(ords);
-                this.send(ui8a);
-            };
-        }
-
-        var xhr = new XMLHttpRequest();
-
-        if (opts.type === 'GET') {
-            opts.url += opts.data ? ('?' + chaos.toQS(opts.data)) : '';
-        }
-
-        xhr.open(opts.type, opts.url, opts.async);
-
-        if (opts.contentType) {
-            xhr.setRequestHeader('Content-type', opts.contentType);
-        }
-
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    deferred.resolve(xhr.responseText);
-                } else {
-                    deferred.reject('HTTP ' + xhr.status + 'for ' + opts.url);
-                }
-            }
-        };
-
-        if (opts.type === 'GET') {
-            xhr.send();
-        } else if (opts.contentType === 'application/x-www-form-urlencoded; charset=UTF-8') {
-            xhr.send(chaos.toQS(opts.data));
-        } else {
-            xhr.sendAsBinary(opts.data);
-        }
-
-        return deferred.promise.then(opts.success, opts.error);
-    },
-
-    get: function(url, data, success, error) {
-        if (typeof data === 'function') {
-            error = success;
-            success = data;
-            data = null;
-        }
-        return this.ajax({
-            type: 'GET',
-            url: url,
-            data: data,
-            success: success,
-            error: error
-        });
-    },
-
-    post: function(url, data, success, error) {
-        if (typeof data === 'function') {
-            error = success;
-            success = data;
-            data = null;
-        }
-        return this.ajax({
-            type: 'POST',
-            url: url,
-            data: data,
-            success: success,
-            error: error
-        });
-    }
-});
-
-
-
 
 
 define('CC98URLMap', function(exports, module) {
@@ -499,30 +399,56 @@ define('CC98URLMap', function(exports, module) {
 define('libcc98', function(exports, module) {
     var chaos = require('chaos');
     var $ = require('jQuery');
-    // 不用 jQuery 的 ajax 而用自己写的 q-http 模块
-    // 一则因为 jquery.min.js 达 87k，远大于 Q 的大小（YUI 压缩后 17k）
-    // 二则是为了练手
-    var http = require('q-http');
     var CC98URLMap = require('CC98URLMap');
 
-    // 从 cookie 中获取
-    var userInfo;
-
-
     var parseTopicList = function(html) {
-        var dom;
-        if (!html) {
-            dom = document;
-        } else {
-            dom = document.implementation.createHTMLDocument('');
-            dom.documentElement.innerHTML = html;
-        }
-        dom = $(dom);
+        var doc;
+        var topicsDOM;
+        var topics = [];
 
-        // for test
-        return dom.find('tr[style="vertical-align: middle;"]');
+        if (!html) {
+            doc = document;
+        } else {
+            doc = document.implementation.createHTMLDocument('');
+            doc.documentElement.innerHTML = html;
+        }
+
+        topicsDOM = $(doc).find('tr[style="vertical-align: middle;"]');
+
+        topics = topicsDOM.map(function(index, ele) {
+            var topic = {};
+
+            var tr = $(ele);
+
+            topic.DOM = ele;
+            topic.type = tr.children().children().first().attr('title');
+            topic.href = tr.children().eq(1).children('a').attr('href');
+            topic.title = tr.children().eq(1).children('a').children().eq(0).text();
+            topic.author = tr.children().eq(2).children().eq(0).text() || '匿名';
+            topic.lastReplyTime = tr.children().eq(4).children().eq(0).text();
+            topic.lastReplyUser = JSON.parse(tr.next().text().replace(/.*'{(.*)}'.*/g, '{$1}'))['usr'];
+
+            return topic;
+        }).toArray();
+
+        return topics;
     };
-    var parseThreadList = function(html) {};
+
+    var parseThreadList = function(html) {
+        var doc;
+        var threadsDOM;
+        var threads = [];
+
+        if (!html) {
+            doc = document;
+        } else {
+            doc = document.implementation.createHTMLDocument('');
+            doc.documentElement.innerHTML = html;
+        }
+
+        return threads;
+    };
+
 
     var libcc98 = {};
 
@@ -533,14 +459,17 @@ define('libcc98', function(exports, module) {
             libcc98.getTopicList(url).then(callback);
         }
 
-        if (chaos.parseURL(url)['path'] !== 'list.asp') {
+        if (url && chaos.parseURL(url)['path'] !== 'list.asp') {
             return;
         }
 
-        if (url === location.href) {
+        // 不带任何参数表示同步调用，返回当前页的帖子列表
+        if (!url) {
+            return parseTopicList();
+        } else if (url === location.href) { // 异步获取当前页的列表（可能是在某个循环中无意中循环到了本页，所以整体风格仍然是异步）
             deferred = $.Deferred();
             promise = deferred.promise().then(parseTopicList);
-            deferred.resolve(''); // 不传任何返回值到 parseTopicList，用来告知它现在是在解析当前页
+            deferred.resolve(); // 不传任何返回值到 parseTopicList，用来告知它现在是在解析当前页
         } else {
             promise = $.get(url).then(parseTopicList);
         }
@@ -555,15 +484,157 @@ define('libcc98', function(exports, module) {
             libcc98.getThreadList(url).then(callback);
         }
 
-        if (chaos.parseURL(url)['path'] !== 'dispbbs.asp') {
+        if (url && chaos.parseURL(url)['path'] !== 'dispbbs.asp') {
             return;
         }
+
+        // 不带任何参数表示同步调用，返回当前页的回复列表
+        if (!url) {
+            return parseThreadList();
+        } else if (url === location.href) { // 异步获取当前页的列表
+            deferred = $.Deferred();
+            promise = deferred.promise().then(parseThreadList);
+            deferred.resolve(); // 不传任何返回值到 parseThreadList，用来告知它现在是在解析当前页
+        } else {
+            promise = $.get(url).then(parseThreadList);
+        }
+
+        return promise;
     };
 
+    var log = function() {
+        console.log.apply(console, arguments);
+    }
     libcc98.test = function() {
-        libcc98.getTopicList('http://www.cc98.org/list.asp?boardid=182').then(function(topics) {
-            console.log(topics);
+        /*
+        // 普通版面
+        libcc98.getTopicList('http://www.cc98.org/list.asp?boardid=81').then(function(topics) {
+            log('情感空气第 10 个帖子（包括置顶）');
+            log(topics[9]);
         });
+        // 心灵
+        libcc98.getTopicList('http://www.cc98.org/list.asp?boardid=182').then(function(topics) {
+            log('心灵之约置顶帖首位');
+            log(topics[0]); //置顶帖
+            log('心灵之约第 10 个帖子（包括置顶）');
+            log(topics[9]); // 心灵普通帖子
+        });
+
+        // 被锁定版面
+        libcc98.getTopicList('http://www.cc98.org/list.asp?boardid=537').then(function(topics) {
+            log('暑假版第 10 个帖子（包括置顶）');
+            log(topics[9]);
+        });
+*/
+
+        // 以上均测试通过
+
+        /*
+        // 普通帖子
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=186&id=4108287').then(function(threads) {
+            log('测试普通帖子');
+            log(threads[1]);
+        });
+
+        // 蓝名用户
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=357&ID=3469578').then(function(threads) {
+            log('测试红名用户');
+            log(threads[0]);
+        });
+
+        // 红名用户
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=4292487').then(function(threads) {
+            log('测试红名用户');
+            log(threads[0]);
+        });
+
+        // 被锁定帖子
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=17&ID=4292545').then(function(threads) {
+            log('测试被锁定帖子');
+            log(threads[1]);
+        });
+
+        // 心灵帖子
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=182&ID=4238943').then(function(threads) {
+            log('测试心灵帖子');
+            log(threads[1]);
+        });
+
+        // 回复可见（不可见）
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=182&ID=3652234').then(function(threads) {
+            log('回复可见帖子首楼');
+            log(threads[0]); // 1 楼，在回复可见出现前
+            log('回复可见的帖子回复');
+            log(threads[1]); // 2 楼，回复可见且对当前用户不可见
+            log('回复可见帖子的后一楼');
+            log(threads[2]); // 3 楼，在回复可见后的一层，用以检查楼层是否乱掉
+        });
+
+        // 回复可见（可见）
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=3705020').then(function(threads) {
+            log('回复可见帖子中的可见帖');
+            log(threads[1]);
+        });
+
+        // 被删除帖子
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=144&id=4133896').then(function(threads) {
+            log('测试被删除帖子');
+            log('被删除的楼');
+            log(threads[6]);
+            log('被删除的后一楼');
+            log(threads[7]);
+        });
+
+        // 楼主可见
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=2805301').then(function(threads) {
+            log('测试楼主可见');
+            log('可见帖');
+            log(threads[0]);
+            log('不可见帖');
+            log(threads[1]);
+        });
+
+        // 指定用户可见（当前用户不可见）
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=144&id=4133896&star=597').then(function(threads) {
+            log('测试指定用户可见（当前用户不可见）');
+            log(threads[0]);
+        });
+
+        // 指定用户可见（当前用户可见）
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=144&id=4014074&star=288').then(function(threads) {
+            log('测试指定用户可见（当前用户可见）');
+            log(threads[9]);
+        });
+
+        // 投票
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=81&ID=4285186').then(function(threads) {
+            log('测试投票帖');
+            log(threads[0])
+        });
+
+        // 被屏蔽的用户
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=622&ID=3720912').then(function(threads) {
+            log('测试被屏蔽用户');
+            log(threads[0]);
+        });
+
+        // 该用户不存在
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?boardID=357&ID=3469578').then(function(threads) {
+            log('测试已不存在的用户');
+            log(threads[0]);
+        });
+
+        // 心灵匿名/不匿名混合贴
+        libcc98.getThreadList('http://www.cc98.org/dispbbs.asp?BoardID=182&id=153389&star=9').then(function(threads) {
+            log('测试心灵匿名/不匿名混合贴');
+            log(threads[0]);
+            log(threads[1]);
+            log(threads[3]);
+        });
+
+        // 追踪页面（由于链接有时效性，故暂略）
+        // libcc98.getThreadList('').then(function(threads) {});
+*/
     };
 
     return libcc98;
@@ -592,7 +663,7 @@ define('options', function(exports, module) {
         "hotKeyCode": 82,                 // 快速回复快捷键组合中字母的keyCode
         */
 
-        "blocked_users": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer"],
+        "blocked_users": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer", "波塞冬"],
     };
 
     var Options = {}; // 用于操作 options 数据的对象

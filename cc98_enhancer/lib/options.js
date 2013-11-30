@@ -20,7 +20,7 @@ define('options', function(exports, module) {
         "hotKeyCode": 82,                 // 快速回复快捷键组合中字母的keyCode
         */
 
-        "blocked_users": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer"],
+        "blocked_users": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer", "波塞冬"],
     };
 
     var Options = {}; // 用于操作 options 数据的对象

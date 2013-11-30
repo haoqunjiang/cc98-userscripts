@@ -1,5 +1,9 @@
 module.exports = function(grunt) {
     grunt.initConfig({
+        watch: {
+            files: ['lib/*.js'],
+            tasks: ['jsbeautifier', 'concat']
+        },
         jsbeautifier: {
             files: ['lib/*.js']
         },
@@ -14,7 +18,9 @@ module.exports = function(grunt) {
             },
         },
     });
+    grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-jsbeautifier');
     grunt.loadNpmTasks('grunt-contrib-concat');
-    grunt.registerTask('default', ['jsbeautifier', 'concat']);
+    grunt.registerTask('default', ['jsbeautifier', 'concat', 'watch']);
+    grunt.registerTask('release', ['jsbeautifier', 'concat']);
 };
