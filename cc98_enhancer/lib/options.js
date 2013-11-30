@@ -44,6 +44,7 @@ define('options', function(exports, module) {
     }
 
     Options.get = function(key) {
+        console.log(key, options[key]);
         return options[key];
     }
 
@@ -57,19 +58,21 @@ define('options', function(exports, module) {
         Options.save();
     }
 
+    // 覆盖整个页面的遮罩层、绝对定位的选项卡（50%~80% width）
+    // 点确认/取消隐藏界面
     Options.show = function() {
-        // 覆盖整个页面的遮罩层、绝对定位的选项卡（50%~80% width）
-        // 点确认/取消隐藏界面
         console.log('options.show');
-    }
-
-    Options.init = function() {
-        var options = Options.restore();
         var $ = require('jQuery');
 
         (unsafeWindow ? unsafeWindow : window).manage2 += '<br><a id="enhancer-options" href="javascript:void(0)">cc98 enhancer 选项</a>';
-        $('#menuDiv').on('click', '#enhancer-options', Options.show);
+        $('#menuDiv').on('click', '#enhancer-options', function() {});
+
     }
 
+    Options.init = function() {
+        options = Options.restore();
+    }
+
+    Options.init();
     module.exports = Options;
 });

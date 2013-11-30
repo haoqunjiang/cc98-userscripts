@@ -126,7 +126,7 @@ define('libcc98', function(exports, module) {
         console.log.apply(console, arguments);
     }
     var test = function() {
-
+        /*
         // 普通版面
         getTopicList('http://www.cc98.org/list.asp?boardid=81').then(function(topics) {
             log('情感空气第 10 个帖子（包括置顶）');
@@ -145,7 +145,7 @@ define('libcc98', function(exports, module) {
             log('暑假版第 10 个帖子（包括置顶）');
             log(topics[9]);
         });
-
+*/
 
         // 以上均测试通过
 

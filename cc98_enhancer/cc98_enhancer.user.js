@@ -524,7 +524,7 @@ define('libcc98', function(exports, module) {
         console.log.apply(console, arguments);
     }
     var test = function() {
-
+        /*
         // 普通版面
         getTopicList('http://www.cc98.org/list.asp?boardid=81').then(function(topics) {
             log('情感空气第 10 个帖子（包括置顶）');
@@ -543,7 +543,7 @@ define('libcc98', function(exports, module) {
             log('暑假版第 10 个帖子（包括置顶）');
             log(topics[9]);
         });
-
+*/
 
         // 以上均测试通过
 
@@ -713,6 +713,7 @@ define('options', function(exports, module) {
     }
 
     Options.get = function(key) {
+        console.log(key, options[key]);
         return options[key];
     }
 
@@ -726,20 +727,22 @@ define('options', function(exports, module) {
         Options.save();
     }
 
+    // 覆盖整个页面的遮罩层、绝对定位的选项卡（50%~80% width）
+    // 点确认/取消隐藏界面
     Options.show = function() {
-        // 覆盖整个页面的遮罩层、绝对定位的选项卡（50%~80% width）
-        // 点确认/取消隐藏界面
         console.log('options.show');
-    }
-
-    Options.init = function() {
-        var options = Options.restore();
         var $ = require('jQuery');
 
         (unsafeWindow ? unsafeWindow : window).manage2 += '<br><a id="enhancer-options" href="javascript:void(0)">cc98 enhancer 选项</a>';
-        $('#menuDiv').on('click', '#enhancer-options', Options.show);
+        $('#menuDiv').on('click', '#enhancer-options', function() {});
+
     }
 
+    Options.init = function() {
+        options = Options.restore();
+    }
+
+    Options.init();
     module.exports = Options;
 });
 
@@ -747,12 +750,27 @@ define('options', function(exports, module) {
 define('utils', function(exports, module) {
     var utils = {};
 
-    var chaos = require('Chaos');
-    var cc98 = require('CC98');
-    var options = require('Options');
+    var chaos = require('chaos');
+    var libcc98 = require('libcc98');
+    var options = require('options');
     var $ = require('jQuery');
 
-    utils.blockTopic = function() {};
+    var blocked_users = options.get('blocked_users');
+
+    utils.blockTopic = function() {
+        var topics = libcc98.getTopicList();
+
+        topics.forEach(function(topic) {
+            if (blocked_users.indexOf(topic.author) === -1) {
+                return;
+            }
+
+            // 隐藏 DOM 节点
+            topic.DOM.style.display = 'none';
+
+            // 增加恢复功能
+        });
+    };
 
     utils.blockThread = function() {};
 
@@ -782,6 +800,7 @@ define('app', function(exports, module) {
     var chaos = require('chaos');
     var options = require('options');
     var libcc98 = require('libcc98');
+    var utils = require('utils');
 
     var isTopicList = (location.pathname === '/list.asp');
     var isThreadList = (location.pathname === '/dispbbs.asp');
@@ -796,6 +815,7 @@ define('app', function(exports, module) {
     app.init = function() {
         app.route(true, options.init); // 给每个界面加上选项菜单
         app.route(true, libcc98.test); // 测试 libcc98 组件
+        app.route(isTopicList, utils.blockTopic); // 屏蔽主题帖
     };
 
     module.exports = app;

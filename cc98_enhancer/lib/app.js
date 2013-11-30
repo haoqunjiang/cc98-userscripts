@@ -4,6 +4,7 @@ define('app', function(exports, module) {
     var chaos = require('chaos');
     var options = require('options');
     var libcc98 = require('libcc98');
+    var utils = require('utils');
 
     var isTopicList = (location.pathname === '/list.asp');
     var isThreadList = (location.pathname === '/dispbbs.asp');
@@ -18,6 +19,7 @@ define('app', function(exports, module) {
     app.init = function() {
         app.route(true, options.init); // 给每个界面加上选项菜单
         app.route(true, libcc98.test); // 测试 libcc98 组件
+        app.route(isTopicList, utils.blockTopic); // 屏蔽主题帖
     };
 
     module.exports = app;

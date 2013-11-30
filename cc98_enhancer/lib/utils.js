@@ -1,12 +1,27 @@
 define('utils', function(exports, module) {
     var utils = {};
 
-    var chaos = require('Chaos');
-    var cc98 = require('CC98');
-    var options = require('Options');
+    var chaos = require('chaos');
+    var libcc98 = require('libcc98');
+    var options = require('options');
     var $ = require('jQuery');
 
-    utils.blockTopic = function() {};
+    var blocked_users = options.get('blocked_users');
+
+    utils.blockTopic = function() {
+        var topics = libcc98.getTopicList();
+
+        topics.forEach(function(topic) {
+            if (blocked_users.indexOf(topic.author) === -1) {
+                return;
+            }
+
+            // 隐藏 DOM 节点
+            topic.DOM.style.display = 'none';
+
+            // 增加恢复功能
+        });
+    };
 
     utils.blockThread = function() {};
 
