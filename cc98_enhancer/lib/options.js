@@ -44,7 +44,6 @@ define('options', function(exports, module) {
     }
 
     Options.get = function(key) {
-        console.log(key, options[key]);
         return options[key];
     }
 

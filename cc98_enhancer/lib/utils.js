@@ -1,7 +1,6 @@
 define('utils', function(exports, module) {
     var utils = {};
 
-    var chaos = require('chaos');
     var libcc98 = require('libcc98');
     var options = require('options');
     var $ = require('jQuery');
@@ -16,10 +15,23 @@ define('utils', function(exports, module) {
                 return;
             }
 
+            var blocked = $(topic.DOM);
+
             // 隐藏 DOM 节点
-            topic.DOM.style.display = 'none';
+            blocked.hide();
 
             // 增加恢复功能
+            var collapsed = $('<tr rowspan="5" class="collapsed-topic"><a href="javascript:;">该主题已被屏蔽</a></tr>');
+            collapsed.css({
+                'color': '#999',
+                'background-color': '#fff',
+                'font-size': '12px'
+            });
+            collapsed.click(function() {
+                blocked.toggle()
+            });
+
+            blocked.before(collapsed);
         });
     };
 
