@@ -7,7 +7,6 @@
 // @description    
 // @include        http://www.cc98.org/*
 // @require        http://libs.baidu.com/jquery/2.0.3/jquery.min.js
-// @require        http://soda-test-space.u.qiniudn.com/q.min.js
 // @run-at         document-end
 // ==/UserScript==
 

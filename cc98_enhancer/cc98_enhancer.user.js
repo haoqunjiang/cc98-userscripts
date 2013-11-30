@@ -497,8 +497,8 @@ define('CC98URLMap', function(exports, module) {
 
 
 define('libcc98', function(exports, module) {
-    var Q = require('Q');
     var chaos = require('chaos');
+    var $ = require('jQuery');
     // 不用 jQuery 的 ajax 而用自己写的 q-http 模块
     // 一则因为 jquery.min.js 达 87k，远大于 Q 的大小（YUI 压缩后 17k）
     // 二则是为了练手
@@ -517,9 +517,10 @@ define('libcc98', function(exports, module) {
             dom = document.implementation.createHTMLDocument('');
             dom.documentElement.innerHTML = html;
         }
+        dom = $(dom);
 
         // for test
-        return dom.querySelectorAll('tr[style="vertical-align: middle;"]');
+        return dom.find('tr[style="vertical-align: middle;"]');
     };
     var parseThreadList = function(html) {};
 
@@ -537,18 +538,18 @@ define('libcc98', function(exports, module) {
         }
 
         if (url === location.href) {
-            deferred = Q.defer();
-            promise = deferred.promise.then(parseTopicList);
+            deferred = $.Deferred();
+            promise = deferred.promise().then(parseTopicList);
             deferred.resolve(''); // 不传任何返回值到 parseTopicList，用来告知它现在是在解析当前页
         } else {
-            promise = http.get(url, parseTopicList);
+            promise = $.get(url).then(parseTopicList);
         }
 
         return promise;
     };
 
     libcc98.getThreadList = function(url, callback) {
-        var deferred = Q.defer();
+        var deferred = $.Deferred();
 
         if (callback instanceof Function) {
             libcc98.getThreadList(url).then(callback);
@@ -672,10 +673,10 @@ define('alias', function(exports, module) {
 });
 
 
+
+
+
 // 在原生回复框下方加入表情菜单（可自定义）
-
-
-
 
 
 define('app', function(exports, module) {
