@@ -401,56 +401,20 @@ define('libcc98', function(exports, module) {
     var $ = require('jQuery');
     var CC98URLMap = require('CC98URLMap');
 
-    var parseTopicList = function(html) {
-        var doc;
-        var topicsDOM;
-        var topics = [];
-
-        if (!html) {
-            doc = document;
-        } else {
-            doc = document.implementation.createHTMLDocument('');
-            doc.documentElement.innerHTML = html;
-        }
-
-        topicsDOM = $(doc).find('tr[style="vertical-align: middle;"]');
-
-        topics = topicsDOM.map(function(index, ele) {
-            var topic = {};
-
-            var tr = $(ele);
-
-            topic.DOM = ele;
-            topic.type = tr.children().children().first().attr('title');
-            topic.href = tr.children().eq(1).children('a').attr('href');
-            topic.title = tr.children().eq(1).children('a').children().eq(0).text();
-            topic.author = tr.children().eq(2).children().eq(0).text() || '匿名';
-            topic.lastReplyTime = tr.children().eq(4).children().eq(0).text();
-            topic.lastReplyUser = JSON.parse(tr.next().text().replace(/.*'{(.*)}'.*/g, '{$1}'))['usr'];
-
-            return topic;
-        }).toArray();
-
-        return topics;
-    };
-
-    var parseThreadList = function(html) {
-        var doc;
-        var threadsDOM;
-        var threads = [];
-
-        if (!html) {
-            doc = document;
-        } else {
-            doc = document.implementation.createHTMLDocument('');
-            doc.documentElement.innerHTML = html;
-        }
-
-        return threads;
-    };
-
-
     var libcc98 = {};
+
+    // 从 cookie 中获取有效信息
+    libcc98.info = (function() {
+        var that = {};
+        var cookieObj = chaos.parseCookies(document.cookie);
+        var aspsky = chaos.parseQS(cookieObj['aspsky']);
+
+        that.isSimple = (cookieObj['cc98Simple'] === '1');
+        that.username = aspsky['username'];
+        that.password = aspsky['password'];
+
+        return that;
+    })();
 
     libcc98.getTopicList = function(url, callback) {
         var deferred, promise;
@@ -502,11 +466,71 @@ define('libcc98', function(exports, module) {
         return promise;
     };
 
+    function parseTopicList(html) {
+        var doc;
+        var topicsDOM;
+        var topics = [];
+
+        if (!html) {
+            doc = document;
+        } else {
+            doc = document.implementation.createHTMLDocument('');
+            doc.documentElement.innerHTML = html;
+        }
+
+        topicsDOM = $(doc).find('tr[style="vertical-align: middle;"]');
+
+        topics = topicsDOM.filter(function(index) {
+            // 对简版的修正
+            if (libcc98.info.isSimple && index === 0) {
+                return false;
+            } else {
+                return true;
+            }
+        }).map(function(index, ele) {
+            var topic = {};
+
+            var tr = $(ele);
+
+            topic.DOM = ele;
+            topic.type = libcc98.info.isSimple ? tr.children().first().text().trim() : tr.children().children().first().attr('title');
+            topic.href = tr.children().eq(1).children('a').attr('href');
+            topic.title = tr.children().eq(1).children('a').children().eq(0).text();
+            topic.author = tr.children().eq(2).children().eq(0).text() || '匿名';
+            topic.lastReplyTime = tr.children().eq(4).children().eq(0).text();
+            topic.lastReplyUser = JSON.parse(tr.next().text().replace(/.*'{(.*)}'.*/g, '{$1}'))['usr'];
+
+            return topic;
+        }).toArray();
+
+        // 对简版的修正
+        if (libcc98.isSimple) {
+            topics.splice(0, 1);
+        }
+
+        return topics;
+    };
+
+    function parseThreadList(html) {
+        var doc;
+        var threadsDOM;
+        var threads = [];
+
+        if (!html) {
+            doc = document;
+        } else {
+            doc = document.implementation.createHTMLDocument('');
+            doc.documentElement.innerHTML = html;
+        }
+
+        return threads;
+    };
+
     var log = function() {
         console.log.apply(console, arguments);
     }
     libcc98.test = function() {
-        /*
+
         // 普通版面
         libcc98.getTopicList('http://www.cc98.org/list.asp?boardid=81').then(function(topics) {
             log('情感空气第 10 个帖子（包括置顶）');
@@ -525,7 +549,7 @@ define('libcc98', function(exports, module) {
             log('暑假版第 10 个帖子（包括置顶）');
             log(topics[9]);
         });
-*/
+
 
         // 以上均测试通过
 
