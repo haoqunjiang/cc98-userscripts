@@ -757,7 +757,7 @@ define('utils', function(exports, module) {
 
     var blocked_users = options.get('blocked_users');
 
-    utils.blockTopic = function() {
+    utils.blockTopics = function() {
         var topics = libcc98.getTopicList();
 
         topics.forEach(function(topic) {
@@ -772,7 +772,7 @@ define('utils', function(exports, module) {
         });
     };
 
-    utils.blockThread = function() {};
+    utils.blockThreads = function() {};
 
     module.exports = utils;
 });
@@ -813,9 +813,10 @@ define('app', function(exports, module) {
     };
 
     app.init = function() {
-        app.route(true, options.init); // 给每个界面加上选项菜单
+        app.route(true, options.show); // 给每个界面加上选项菜单
         app.route(true, libcc98.test); // 测试 libcc98 组件
-        app.route(isTopicList, utils.blockTopic); // 屏蔽主题帖
+        app.route(isTopicList, utils.blockTopics); // 屏蔽主题帖
+        app.route(isTopicList, utils.blockThreads); // 屏蔽回复内容
     };
 
     module.exports = app;
