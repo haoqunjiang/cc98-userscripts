@@ -729,14 +729,13 @@ define('options', function(exports, module) {
     // 默认选项
     var DEFAULT_OPTIONS = {
         "blocked_users": {
-            "description": "屏蔽用户列表",
+            "description": "屏蔽用户名单",
             "value": []
         }
     };
 
     var save = function() {
         localStorage.setItem('enhancer_options', JSON.stringify(options));
-        console.log(options);
     }
 
     var restore = function() {
