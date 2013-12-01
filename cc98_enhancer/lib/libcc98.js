@@ -81,10 +81,13 @@ define('libcc98', function(exports, module) {
         if (info.isSimple) {
             threads = anchors.map(function(index, ele) {
                 var thread = {};
+
+                var table = $(ele).next();
+
                 thread.anchor = parseInt(ele.name, 10);
-                thread.DOM; // 整个回复的 DOM，在屏蔽时有用
-                thread.authorDOM;
-                thread.author;
+                thread.DOM = table.get(0); // 整个回复的 DOM，在屏蔽时有用
+                thread.authorDOM = table.find('.usernamedisp').find('b').get(0);
+                thread.author = $(thread.authorDOM).text();
                 thread.time;
                 thread.storey; // 每层楼边上服务器给出的楼层数
 
@@ -96,7 +99,9 @@ define('libcc98', function(exports, module) {
                 thread.title; // 标题
 
                 return thread;
-            });
+            }).toArray();
+
+            return threads;
         }
 
         // 完整版
@@ -108,11 +113,11 @@ define('libcc98', function(exports, module) {
             thread.anchor = parseInt(ele.name, 10);
             thread.DOM = table.get(0); // 整个回复的 DOM，在屏蔽时有用
 
-            thread.authorDOM = table.children().children().children().eq(0).find('b').parent();
-            thread.author = thread.authorDOM.children().eq(0).text();
+            thread.authorDOM = table.children().children().children().eq(0).find('b').parent().get(0);
+            thread.author = $(thread.authorDOM).children().eq(0).text();
             thread.time = table.children().children().eq(1).children().eq(0).text().trim();
-            thread.quotebtn = table.find('img[src="pic/reply.gif"]').parent(); // 暴露接口方便修改 UI
-            thread.annouceid = chaos.parseQS(thread.quotebtn.attr('href'))['replyID']; // 通过「引用」按钮的链接提取
+            thread.quotebtn = table.find('img[src="pic/reply.gif"]').parent().get(0); // 暴露接口方便修改 UI
+            thread.annouceid = chaos.parseQS(thread.quotebtn.href)['replyID']; // 通过「引用」按钮的链接提取
             thread.storey; // 每层楼边上服务器给出的楼层数
 
             // 以下可能没有（楼主可见/指定用户可见/回复可见）

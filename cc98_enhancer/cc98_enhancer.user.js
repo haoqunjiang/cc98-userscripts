@@ -479,10 +479,13 @@ define('libcc98', function(exports, module) {
         if (info.isSimple) {
             threads = anchors.map(function(index, ele) {
                 var thread = {};
+
+                var table = $(ele).next();
+
                 thread.anchor = parseInt(ele.name, 10);
-                thread.DOM; // 整个回复的 DOM，在屏蔽时有用
-                thread.authorDOM;
-                thread.author;
+                thread.DOM = table.get(0); // 整个回复的 DOM，在屏蔽时有用
+                thread.authorDOM = table.find('.usernamedisp').find('b').get(0);
+                thread.author = $(thread.authorDOM).text();
                 thread.time;
                 thread.storey; // 每层楼边上服务器给出的楼层数
 
@@ -494,7 +497,9 @@ define('libcc98', function(exports, module) {
                 thread.title; // 标题
 
                 return thread;
-            });
+            }).toArray();
+
+            return threads;
         }
 
         // 完整版
@@ -506,11 +511,11 @@ define('libcc98', function(exports, module) {
             thread.anchor = parseInt(ele.name, 10);
             thread.DOM = table.get(0); // 整个回复的 DOM，在屏蔽时有用
 
-            thread.authorDOM = table.children().children().children().eq(0).find('b').parent();
-            thread.author = thread.authorDOM.children().eq(0).text();
+            thread.authorDOM = table.children().children().children().eq(0).find('b').parent().get(0);
+            thread.author = $(thread.authorDOM).children().eq(0).text();
             thread.time = table.children().children().eq(1).children().eq(0).text().trim();
-            thread.quotebtn = table.find('img[src="pic/reply.gif"]').parent(); // 暴露接口方便修改 UI
-            thread.annouceid = chaos.parseQS(thread.quotebtn.attr('href'))['replyID']; // 通过「引用」按钮的链接提取
+            thread.quotebtn = table.find('img[src="pic/reply.gif"]').parent().get(0); // 暴露接口方便修改 UI
+            thread.annouceid = chaos.parseQS(thread.quotebtn.href)['replyID']; // 通过「引用」按钮的链接提取
             thread.storey; // 每层楼边上服务器给出的楼层数
 
             // 以下可能没有（楼主可见/指定用户可见/回复可见）
@@ -725,13 +730,13 @@ define('options', function(exports, module) {
     var DEFAULT_OPTIONS = {
         "blocked_users": {
             "description": "屏蔽列表",
-            "value": []
+            "value": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer", "波塞冬"]
         }
     };
 
     var Options = {}; // 用于操作 options 数据的对象
 
-    Options.save = function(options) {
+    Options.save = function() {
         localStorage.setItem('enhancer_options', JSON.stringify(options));
     }
 
@@ -768,10 +773,122 @@ define('options', function(exports, module) {
     Options.show = function() {
         console.log('options.show');
         var $ = require('jQuery');
+        var chaos = require('chaos');
 
-        (unsafeWindow ? unsafeWindow : window).manage2 += '<br><a id="enhancer-options" href="javascript:void(0)">cc98 enhancer 选项</a>';
-        $('#menuDiv').on('click', '#enhancer-options', function() {});
+        // 先生成对应 DOM 结构，然后在鼠标点击时显示/隐藏该 div
+        var div = $('<div id="enhancer-options"></div>');
+        var dl = $('<dl></dl>');
 
+        for (var key in options) {
+            var dt = $('<dt>' + options[key]['description'] + '</dt>');
+            dt.data('key', key);
+
+            var dd = $('<dd></dd>');
+            // 如果是数组，则依次展现数组元素
+            if (Array.isArray(Options.get(key))) {
+                for (var i = 0; i !== Options.get(key).length; ++i) {
+                    var item = $('<span class="array-item">' + Options.get(key)[i] + '<a class="delete-item"></a></span>');
+                    dd.append(item);
+                }
+                dd.append('<input type="text" class="new-item">').append('<a class="add-item"></a>');
+            }
+            dl.append(dt).append(dd);
+            div.append(dl);
+        }
+        div.append('<div><button class="enhancer-btn" id="submit-options">确定</button></div>');
+        $('body').append(div);
+
+        div.hide();
+
+        div.on('click', '.delete-item', function(e) {
+            var item = $(this).parent();
+            var key = item.parent().prev().data('key');
+            var array = Options.get(key);
+            var value = item.text();
+
+            array.splice(array.indexOf(value), 1);
+            Options.set(key, array);
+
+            item.remove();
+        });
+        $('.add-item').click(function(e) {
+            var item = $(this).prev()
+            var value = item.prop('value');
+            if (!value) {
+                return;
+            }
+
+            var dd = item.parent();
+            var key = dd.prev().data('key');
+            var array = Options.get(key);
+
+            if (array.indexOf(value) !== -1) {
+                return;
+            }
+            array.push(value);
+            Options.set(key, array);
+
+            item.prop('value', '');
+            item.before('<span class="array-item">' + value + '<a class="delete-item"></a></span>');
+        });
+
+        $('#submit-options').click(function(e) {
+            div.hide();
+        });
+
+        (unsafeWindow ? unsafeWindow : window).manage2 += '<br><a id="show-enhancer-options" href="javascript:;">cc98 enhancer 选项</a>';
+        $('#menuDiv').on('click', '#show-enhancer-options', function() {
+            div.show();
+        });
+
+        chaos.addStyles([
+            '#enhancer-options {',
+            '    position: absolute;',
+            '    top: 150px;',
+            '    left: 15%;',
+            '    width: 70%;',
+            '    margin: 0 auto;',
+            '    border: 1px solid #ccc;',
+            '    border-radius: 10px;',
+            '    box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);',
+            '    padding: 10px 20px;',
+            '    background-color: #fff;',
+            '}',
+            '#enhancer-options dt, #enhancer-options dd {',
+            '    display: inline-block;',
+            '    padding-top: 0;',
+            '    color: #333;',
+            '    font-size: 14px;',
+            '}',
+            '.array-item {',
+            '    border: 0 none;',
+            '    border-radius: 3px;',
+            '    background-color: #ddd;',
+            '    box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.25);',
+            '    padding: 0 5px;',
+            '    display: inline-block;',
+            '    margin-left: 30px;',
+            '}',
+            '.add-item, .delete-item {',
+            '    display: inline-block;',
+            '    vertical-align: middle;',
+            '    width: 16px;',
+            '    height: 16px;',
+            '    cursor: pointer;',
+            '}',
+            '.delete-item {',
+            '    margin-left: 4px;',
+            '    background-image: url(http://file.cc98.org/uploadfile/2013/12/2/2101869387.png);',
+            '}',
+            '.add-item {',
+            '    margin-left: 30px;',
+            '    background-image: url(http://file.cc98.org/uploadfile/2013/12/2/2101873264.png);',
+            '}',
+            '.new-item {',
+            '    margin-left: 30px;',
+            '    width: 80px;',
+            '}',
+        ].join('\n'));
     }
 
     Options.init = function() {
