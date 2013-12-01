@@ -729,7 +729,7 @@ define('options', function(exports, module) {
     // 默认选项
     var DEFAULT_OPTIONS = {
         "blocked_users": {
-            "description": "屏蔽列表",
+            "description": "屏蔽用户列表",
             "value": []
         }
     };
