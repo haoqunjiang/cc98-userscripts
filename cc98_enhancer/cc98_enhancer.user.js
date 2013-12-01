@@ -672,24 +672,10 @@ define('options', function(exports, module) {
     var options = {};
     // 默认选项
     var DEFAULT_OPTIONS = {
-        /*
-        "autoSaveInterval": 30,           // 自动保存间隔(秒)，必须是10的倍数
-
-        "promptString": '>>查看原帖<<',   // 原帖链接的提示文字
-        "promptColor": 'royalblue',       //「查看原帖」的颜色
-
-        "replyTail": "",                  // 小尾巴
-        "defaultReplyContent": '\n',      // 文本框为空时的默认回复内容
-
-        "useRelativeURL": true,           // 使用相对链接
-        "disableInXinlin": false,         // 在心灵禁用这些设置
-        "showFastReplyButton": true,      // 显示快速回复按钮
-        "alwaysShowEmotions": false,      // 始终显示表情菜单
-        "modifierKey": "alt",             // 快速回复快捷键组合的modifier key
-        "hotKeyCode": 82,                 // 快速回复快捷键组合中字母的keyCode
-        */
-
-        "blocked_users": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer", "波塞冬"],
+        "blocked_users": {
+            "description": "屏蔽列表",
+            "value": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer", "波塞冬"]
+        }
     };
 
     var Options = {}; // 用于操作 options 数据的对象
@@ -713,16 +699,16 @@ define('options', function(exports, module) {
     }
 
     Options.get = function(key) {
-        return options[key];
+        return options[key].value;
     }
 
     Options.set = function(key, value) {
-        options[key] = value;
+        options[key].value = value;
         Options.save();
     }
 
     Options.delete = function(key) {
-        delete options[key];
+        delete options[key].value;
         Options.save();
     }
 
@@ -749,6 +735,7 @@ define('options', function(exports, module) {
 define('utils', function(exports, module) {
     var utils = {};
 
+    var chaos = require('chaos');
     var libcc98 = require('libcc98');
     var options = require('options');
     var $ = require('jQuery');
@@ -766,18 +753,37 @@ define('utils', function(exports, module) {
             var blocked = $(topic.DOM);
 
             // 隐藏 DOM 节点
+            blocked.find('a, span, font, td').css('color', '#999');
+            blocked.addClass('blocked');
             blocked.hide();
 
             // 增加恢复功能
-            var collapsed = $('<tr rowspan="5" class="collapsed-topic"><a href="javascript:;">该主题已被屏蔽</a></tr>');
-            collapsed.css({
-                'color': '#999',
-                'background-color': '#fff',
-                'font-size': '12px'
+            var collapsed = $('<tr class="collapsed-topic"><td colspan="5"></td></tr>');
+            var switcher = $('<a class="collapsed-switcher" href="javascript:;"></a>')
+            var prompt = $('<span class="collapsed-prompt">该主题已被屏蔽，点击展开</span>');
+
+            switcher.click(function() {
+                blocked.toggle();
+                prompt.text(prompt.text() === '该主题已被屏蔽，点击展开' ? '主题已展开，点击屏蔽' : '该主题已被屏蔽，点击展开');
             });
-            collapsed.click(function() {
-                blocked.toggle()
-            });
+
+            chaos.addStyles([
+                '.collapsed-topic td { padding: 0; }',
+
+                '.collapsed-switcher {',
+                '   display: block;',
+                '   font-size: 12px;',
+                '   text-align: center;',
+                '   background-color: #eee;',
+                '}',
+                '.collapsed-switcher:hover { background-color: #ddd; }',
+
+                '.collapsed-switcher .collapsed-prompt { color: #999; }',
+                '.collapsed-switcher .collapsed-prompt:hover { color: #333; }',
+            ].join('\n'));
+
+            switcher.append(prompt);
+            collapsed.children().append(switcher);
 
             blocked.before(collapsed);
         });

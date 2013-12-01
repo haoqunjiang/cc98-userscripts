@@ -3,24 +3,10 @@ define('options', function(exports, module) {
     var options = {};
     // 默认选项
     var DEFAULT_OPTIONS = {
-        /*
-        "autoSaveInterval": 30,           // 自动保存间隔(秒)，必须是10的倍数
-
-        "promptString": '>>查看原帖<<',   // 原帖链接的提示文字
-        "promptColor": 'royalblue',       //「查看原帖」的颜色
-
-        "replyTail": "",                  // 小尾巴
-        "defaultReplyContent": '\n',      // 文本框为空时的默认回复内容
-
-        "useRelativeURL": true,           // 使用相对链接
-        "disableInXinlin": false,         // 在心灵禁用这些设置
-        "showFastReplyButton": true,      // 显示快速回复按钮
-        "alwaysShowEmotions": false,      // 始终显示表情菜单
-        "modifierKey": "alt",             // 快速回复快捷键组合的modifier key
-        "hotKeyCode": 82,                 // 快速回复快捷键组合中字母的keyCode
-        */
-
-        "blocked_users": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer", "波塞冬"],
+        "blocked_users": {
+            "description": "屏蔽列表",
+            "value": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer", "波塞冬"]
+        }
     };
 
     var Options = {}; // 用于操作 options 数据的对象
@@ -44,16 +30,16 @@ define('options', function(exports, module) {
     }
 
     Options.get = function(key) {
-        return options[key];
+        return options[key].value;
     }
 
     Options.set = function(key, value) {
-        options[key] = value;
+        options[key].value = value;
         Options.save();
     }
 
     Options.delete = function(key) {
-        delete options[key];
+        delete options[key].value;
         Options.save();
     }
 
