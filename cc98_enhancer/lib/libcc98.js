@@ -3,6 +3,10 @@ define('libcc98', function(exports, module) {
     var $ = require('jQuery');
     var CC98URLMap = require('CC98URLMap');
 
+    var log = function() {
+        console.log.apply(console, arguments);
+    }
+
     // 从 cookie 中获取有效信息
     var info = (function() {
         var that = {};
@@ -68,6 +72,57 @@ define('libcc98', function(exports, module) {
             doc.documentElement.innerHTML = html;
         }
 
+        // 98自己的 anchors 也是跳过被删除发言的，所以这里就不考虑了
+        var anchors = $('a[name]').filter(function(index) {
+            return /^\d{1,2}$/g.test(this.name);
+        });
+
+        // 简版
+        if (info.isSimple) {
+            threads = anchors.map(function(index, ele) {
+                var thread = {};
+                thread.anchor = parseInt(ele.name, 10);
+                thread.DOM; // 整个回复的 DOM，在屏蔽时有用
+                thread.authorDOM;
+                thread.author;
+                thread.time;
+                thread.storey; // 每层楼边上服务器给出的楼层数
+
+                thread.annouceid; // 通过「引用」按钮的链接提取
+
+                // 以下可能没有（楼主可见/指定用户可见/回复可见）
+                thread.content; // 回复内容
+                thread.expression; // 小表情
+                thread.title; // 标题
+
+                return thread;
+            });
+        }
+
+        // 完整版
+        threads = anchors.map(function(index, ele) {
+            var thread = {};
+
+            var table = $(ele).next();
+
+            thread.anchor = parseInt(ele.name, 10);
+            thread.DOM = table.get(0); // 整个回复的 DOM，在屏蔽时有用
+
+            thread.authorDOM = table.children().children().children().eq(0).find('b').parent();
+            thread.author = thread.authorDOM.children().eq(0).text();
+            thread.time = table.children().children().eq(1).children().eq(0).text().trim();
+            thread.quotebtn = table.find('img[src="pic/reply.gif"]').parent(); // 暴露接口方便修改 UI
+            thread.annouceid = chaos.parseQS(thread.quotebtn.attr('href'))['replyID']; // 通过「引用」按钮的链接提取
+            thread.storey; // 每层楼边上服务器给出的楼层数
+
+            // 以下可能没有（楼主可见/指定用户可见/回复可见）
+            thread.content; // 回复内容
+            thread.expression; // 小表情
+            thread.title; // 标题
+
+            return thread;
+        }).toArray();
+
         return threads;
     };
 
@@ -121,10 +176,6 @@ define('libcc98', function(exports, module) {
         return promise;
     };
 
-
-    var log = function() {
-        console.log.apply(console, arguments);
-    }
     var test = function() {
         /*
         // 普通版面

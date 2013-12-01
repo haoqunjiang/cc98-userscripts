@@ -8,15 +8,25 @@ define('utils', function(exports, module) {
 
     var blocked_users = options.get('blocked_users');
 
-    utils.blockTopics = function() {
-        var topics = libcc98.getTopicList();
+    // @param {string} type 'threads'|'topics' 表示屏蔽页面还是屏蔽
+    utils.block = function(type) {
+        var list;
 
-        topics.forEach(function(topic) {
-            if (blocked_users.indexOf(topic.author) === -1) {
+        if (type === 'threads') {
+            list = libcc98.getThreadList();
+        } else if (type === 'topics') {
+            list = libcc98.getTopicList();
+        } else {
+            return;
+        }
+
+        list.forEach(function(item) {
+            if (blocked_users.indexOf(item.author) === -1) {
                 return;
             }
 
-            var blocked = $(topic.DOM);
+            var blocked = $(item.DOM);
+            var width = item.DOM.clientWidth;
 
             // 隐藏 DOM 节点
             blocked.find('a, span, font, td').css('color', '#999');
@@ -24,38 +34,47 @@ define('utils', function(exports, module) {
             blocked.hide();
 
             // 增加恢复功能
-            var collapsed = $('<tr class="collapsed-topic"><td colspan="5"></td></tr>');
-            var switcher = $('<a class="collapsed-switcher" href="javascript:;"></a>')
-            var prompt = $('<span class="collapsed-prompt">该主题已被屏蔽，点击展开</span>');
+            var collapsed;
+            if (type === 'topics') {
+                collapsed = $('<tr class="collapsed-item"><td colspan="5"></td></tr>');
+            } else {
+                collapsed = $('<div class="collapsed-item"></div>');
+                collapsed.css({
+                    'width': '97%',
+                    'margin': 'auto',
+                    'border': '0'
+                });
+            }
+            var switcher = $('<a class="collapsed-switcher" href="javascript:;">该帖已被屏蔽，点击展开</a>')
 
             switcher.click(function() {
                 blocked.toggle();
-                prompt.text(prompt.text() === '该主题已被屏蔽，点击展开' ? '主题已展开，点击屏蔽' : '该主题已被屏蔽，点击展开');
+                switcher.text(switcher.text() === '该帖已被屏蔽，点击展开' ? '帖子已展开，点击屏蔽' : '该帖已被屏蔽，点击展开');
             });
 
             chaos.addStyles([
-                '.collapsed-topic td { padding: 0; }',
+                '.collapsed-item td { padding: 0; }',
 
                 '.collapsed-switcher {',
                 '   display: block;',
                 '   font-size: 12px;',
                 '   text-align: center;',
                 '   background-color: #eee;',
+                '   color: #999 !important;',
                 '}',
-                '.collapsed-switcher:hover { background-color: #ddd; }',
+                '.collapsed-switcher:hover {',
+                '   background-color: #ddd;',
+                '   color: #333 !important;',
+                '   text-decoration: none;',
+                '}',
 
-                '.collapsed-switcher .collapsed-prompt { color: #999; }',
-                '.collapsed-switcher .collapsed-prompt:hover { color: #333; }',
             ].join('\n'));
 
-            switcher.append(prompt);
-            collapsed.children().append(switcher);
+            (type === 'topics' ? collapsed.children() : collapsed).append(switcher);
 
             blocked.before(collapsed);
         });
     };
-
-    utils.blockThreads = function() {};
 
     module.exports = utils;
 });

@@ -401,6 +401,10 @@ define('libcc98', function(exports, module) {
     var $ = require('jQuery');
     var CC98URLMap = require('CC98URLMap');
 
+    var log = function() {
+        console.log.apply(console, arguments);
+    }
+
     // 从 cookie 中获取有效信息
     var info = (function() {
         var that = {};
@@ -466,6 +470,57 @@ define('libcc98', function(exports, module) {
             doc.documentElement.innerHTML = html;
         }
 
+        // 98自己的 anchors 也是跳过被删除发言的，所以这里就不考虑了
+        var anchors = $('a[name]').filter(function(index) {
+            return /^\d{1,2}$/g.test(this.name);
+        });
+
+        // 简版
+        if (info.isSimple) {
+            threads = anchors.map(function(index, ele) {
+                var thread = {};
+                thread.anchor = parseInt(ele.name, 10);
+                thread.DOM; // 整个回复的 DOM，在屏蔽时有用
+                thread.authorDOM;
+                thread.author;
+                thread.time;
+                thread.storey; // 每层楼边上服务器给出的楼层数
+
+                thread.annouceid; // 通过「引用」按钮的链接提取
+
+                // 以下可能没有（楼主可见/指定用户可见/回复可见）
+                thread.content; // 回复内容
+                thread.expression; // 小表情
+                thread.title; // 标题
+
+                return thread;
+            });
+        }
+
+        // 完整版
+        threads = anchors.map(function(index, ele) {
+            var thread = {};
+
+            var table = $(ele).next();
+
+            thread.anchor = parseInt(ele.name, 10);
+            thread.DOM = table.get(0); // 整个回复的 DOM，在屏蔽时有用
+
+            thread.authorDOM = table.children().children().children().eq(0).find('b').parent();
+            thread.author = thread.authorDOM.children().eq(0).text();
+            thread.time = table.children().children().eq(1).children().eq(0).text().trim();
+            thread.quotebtn = table.find('img[src="pic/reply.gif"]').parent(); // 暴露接口方便修改 UI
+            thread.annouceid = chaos.parseQS(thread.quotebtn.attr('href'))['replyID']; // 通过「引用」按钮的链接提取
+            thread.storey; // 每层楼边上服务器给出的楼层数
+
+            // 以下可能没有（楼主可见/指定用户可见/回复可见）
+            thread.content; // 回复内容
+            thread.expression; // 小表情
+            thread.title; // 标题
+
+            return thread;
+        }).toArray();
+
         return threads;
     };
 
@@ -519,10 +574,6 @@ define('libcc98', function(exports, module) {
         return promise;
     };
 
-
-    var log = function() {
-        console.log.apply(console, arguments);
-    }
     var test = function() {
         /*
         // 普通版面
@@ -674,7 +725,7 @@ define('options', function(exports, module) {
     var DEFAULT_OPTIONS = {
         "blocked_users": {
             "description": "屏蔽列表",
-            "value": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer", "波塞冬"]
+            "value": []
         }
     };
 
@@ -742,15 +793,25 @@ define('utils', function(exports, module) {
 
     var blocked_users = options.get('blocked_users');
 
-    utils.blockTopics = function() {
-        var topics = libcc98.getTopicList();
+    // @param {string} type 'threads'|'topics' 表示屏蔽页面还是屏蔽
+    utils.block = function(type) {
+        var list;
 
-        topics.forEach(function(topic) {
-            if (blocked_users.indexOf(topic.author) === -1) {
+        if (type === 'threads') {
+            list = libcc98.getThreadList();
+        } else if (type === 'topics') {
+            list = libcc98.getTopicList();
+        } else {
+            return;
+        }
+
+        list.forEach(function(item) {
+            if (blocked_users.indexOf(item.author) === -1) {
                 return;
             }
 
-            var blocked = $(topic.DOM);
+            var blocked = $(item.DOM);
+            var width = item.DOM.clientWidth;
 
             // 隐藏 DOM 节点
             blocked.find('a, span, font, td').css('color', '#999');
@@ -758,38 +819,47 @@ define('utils', function(exports, module) {
             blocked.hide();
 
             // 增加恢复功能
-            var collapsed = $('<tr class="collapsed-topic"><td colspan="5"></td></tr>');
-            var switcher = $('<a class="collapsed-switcher" href="javascript:;"></a>')
-            var prompt = $('<span class="collapsed-prompt">该主题已被屏蔽，点击展开</span>');
+            var collapsed;
+            if (type === 'topics') {
+                collapsed = $('<tr class="collapsed-item"><td colspan="5"></td></tr>');
+            } else {
+                collapsed = $('<div class="collapsed-item"></div>');
+                collapsed.css({
+                    'width': '97%',
+                    'margin': 'auto',
+                    'border': '0'
+                });
+            }
+            var switcher = $('<a class="collapsed-switcher" href="javascript:;">该帖已被屏蔽，点击展开</a>')
 
             switcher.click(function() {
                 blocked.toggle();
-                prompt.text(prompt.text() === '该主题已被屏蔽，点击展开' ? '主题已展开，点击屏蔽' : '该主题已被屏蔽，点击展开');
+                switcher.text(switcher.text() === '该帖已被屏蔽，点击展开' ? '帖子已展开，点击屏蔽' : '该帖已被屏蔽，点击展开');
             });
 
             chaos.addStyles([
-                '.collapsed-topic td { padding: 0; }',
+                '.collapsed-item td { padding: 0; }',
 
                 '.collapsed-switcher {',
                 '   display: block;',
                 '   font-size: 12px;',
                 '   text-align: center;',
                 '   background-color: #eee;',
+                '   color: #999 !important;',
                 '}',
-                '.collapsed-switcher:hover { background-color: #ddd; }',
+                '.collapsed-switcher:hover {',
+                '   background-color: #ddd;',
+                '   color: #333 !important;',
+                '   text-decoration: none;',
+                '}',
 
-                '.collapsed-switcher .collapsed-prompt { color: #999; }',
-                '.collapsed-switcher .collapsed-prompt:hover { color: #333; }',
             ].join('\n'));
 
-            switcher.append(prompt);
-            collapsed.children().append(switcher);
+            (type === 'topics' ? collapsed.children() : collapsed).append(switcher);
 
             blocked.before(collapsed);
         });
     };
-
-    utils.blockThreads = function() {};
 
     module.exports = utils;
 });
@@ -832,8 +902,12 @@ define('app', function(exports, module) {
     app.init = function() {
         app.route(true, options.show); // 给每个界面加上选项菜单
         app.route(true, libcc98.test); // 测试 libcc98 组件
-        app.route(isTopicList, utils.blockTopics); // 屏蔽主题帖
-        app.route(isTopicList, utils.blockThreads); // 屏蔽回复内容
+        app.route(isTopicList, function() {
+            utils.block('topics');
+        }); // 屏蔽主题帖
+        app.route(isThreadList, function() {
+            utils.block('threads');
+        }); // 屏蔽回复内容
     };
 
     module.exports = app;
