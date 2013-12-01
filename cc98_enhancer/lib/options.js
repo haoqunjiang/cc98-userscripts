@@ -9,14 +9,13 @@ define('options', function(exports, module) {
         }
     };
 
-    var Options = {}; // 用于操作 options 数据的对象
-
-    Options.save = function() {
+    var save = function() {
         localStorage.setItem('enhancer_options', JSON.stringify(options));
+        console.log(options);
     }
 
-    Options.restore = function() {
-        var options = JSON.parse(localStorage.getItem('enhancer_options')) || {};
+    var restore = function() {
+        options = JSON.parse(localStorage.getItem('enhancer_options')) || {};
 
         // 如果新增了默认配置项，则加入到原配置中
         for (var prop in DEFAULT_OPTIONS) {
@@ -24,28 +23,26 @@ define('options', function(exports, module) {
                 options[prop] = DEFAULT_OPTIONS[prop];
             }
         }
-        Options.save(options);
-
-        return options;
+        save(options);
     }
 
-    Options.get = function(key) {
+    var get = function(key) {
         return options[key].value;
     }
 
-    Options.set = function(key, value) {
+    var set = function(key, value) {
         options[key].value = value;
-        Options.save();
+        save();
     }
 
-    Options.delete = function(key) {
+    var remove = function(key) {
         delete options[key].value;
-        Options.save();
+        save();
     }
 
     // 覆盖整个页面的遮罩层、绝对定位的选项卡（50%~80% width）
     // 点确认/取消隐藏界面
-    Options.show = function() {
+    var show = function() {
         console.log('options.show');
         var $ = require('jQuery');
         var chaos = require('chaos');
@@ -60,9 +57,9 @@ define('options', function(exports, module) {
 
             var dd = $('<dd></dd>');
             // 如果是数组，则依次展现数组元素
-            if (Array.isArray(Options.get(key))) {
-                for (var i = 0; i !== Options.get(key).length; ++i) {
-                    var item = $('<span class="array-item">' + Options.get(key)[i] + '<a class="delete-item"></a></span>');
+            if (Array.isArray(get(key))) {
+                for (var i = 0; i !== get(key).length; ++i) {
+                    var item = $('<span class="array-item">' + get(key)[i] + '<a class="delete-item"></a></span>');
                     dd.append(item);
                 }
                 dd.append('<input type="text" class="new-item">').append('<a class="add-item"></a>');
@@ -78,30 +75,30 @@ define('options', function(exports, module) {
         div.on('click', '.delete-item', function(e) {
             var item = $(this).parent();
             var key = item.parent().prev().data('key');
-            var array = Options.get(key);
+            var array = get(key);
             var value = item.text();
 
             array.splice(array.indexOf(value), 1);
-            Options.set(key, array);
+            set(key, array);
 
             item.remove();
         });
         $('.add-item').click(function(e) {
             var item = $(this).prev()
-            var value = item.prop('value');
+            var value = item.prop('value').trim();
             if (!value) {
                 return;
             }
 
             var dd = item.parent();
             var key = dd.prev().data('key');
-            var array = Options.get(key);
+            var array = get(key);
 
             if (array.indexOf(value) !== -1) {
                 return;
             }
             array.push(value);
-            Options.set(key, array);
+            set(key, array);
 
             item.prop('value', '');
             item.before('<span class="array-item">' + value + '<a class="delete-item"></a></span>');
@@ -166,10 +163,18 @@ define('options', function(exports, module) {
         ].join('\n'));
     }
 
-    Options.init = function() {
-        options = Options.restore();
+    init = function() {
+        restore();
     }
 
-    Options.init();
-    module.exports = Options;
+    init();
+    var that = {};
+    that.save = save;
+    that.restore = restore;
+    that.get = get;
+    that.set = set;
+    that.remove = remove;
+    that.show = show;
+    that.init = init;
+    module.exports = that;
 });
