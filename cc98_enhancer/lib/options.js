@@ -5,7 +5,7 @@ define('options', function(exports, module) {
     var DEFAULT_OPTIONS = {
         "blocked_users": {
             "description": "屏蔽列表",
-            "value": ["竹林来客", "燕北飞", "cft", "cone", "Uglyzjuer", "波塞冬"]
+            "value": []
         }
     };
 
