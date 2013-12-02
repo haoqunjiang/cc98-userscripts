@@ -102,6 +102,11 @@ define('options', function(exports, module) {
             item.prop('value', '');
             item.before('<span class="array-item">' + value + '<a class="delete-item"></a></span>');
         });
+        $('.new-item').keyup(function(e) {
+            if (e.keyCode === 13) {
+                $(this).next().click();
+            }
+        });
 
         $('#submit-options').click(function(e) {
             div.hide();
