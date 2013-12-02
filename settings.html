@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>回复设置</title>
+    <style type="text/css">
+    #group_name {
+        width: 400px;
+    }
+    #group_content {
+        width: 400px;
+        min-height: 300px;
+    }
+    </style>
+</head>
+<body>
+    <div id="reply_settings">
+    <form id="settings_form">
+        <lengend><h3>编辑分组</h3></lengend>
+        <label for="group_name">分组名称（不能和已有的重复）</label>
+        <br>
+        <input id="group_name" type="text">
+        <br>
+        <label for="group_content">分组表情列表（图片地址或者带[upload]标签的也可）</label>
+        <br>
+        <textarea id="group_content"></textarea>
+        <br>
+        <input type="button" id="save_reply_settings" class="soda-button" value="保存设置">
+    </form>
+    </div>
+
+</body>
+</html>

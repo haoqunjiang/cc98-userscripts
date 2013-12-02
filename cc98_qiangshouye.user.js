@@ -145,12 +145,12 @@ function qiangshouye(html) {
     var url = "http://www.cc98.org/" + latest.replace(NEWTOPIC_RE, "$1");
     var title = latest.replace(NEWTOPIC_RE, "$2");
     console.log(title)
-    if (title.indexOf("水楼") > 0) {
+    if (title.indexOf("投票") > 0) {
         setTimeout(function(){
             reply({
                 "url": url,
-                "expression": "face7.gif",
-                "content": "sy!",
+                "expression": "face10.gif",
+                "content": "[color=red]请大家支持“小黑说得队”，谢谢！[/color]",
                 "password": parseQS(parseCookies(document.cookie)["aspsky"])["password"],
                 "callback": function() { alert("成功抢到贴子“" + title + "”的首页！"); }
             })
