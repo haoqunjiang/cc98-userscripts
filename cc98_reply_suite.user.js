@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.6.3
+// @version        0.6.4
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -10,6 +10,8 @@
 // @run-at         document-end
 // ==/UserScript==
 
+// todo:
+// 上传 mp3 的标签改一下
 // 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯_╰)╭
 // 而index表示楼层的序号，0是第一楼，1是第二楼……
 
@@ -1143,6 +1145,10 @@ function uploadFiles() {
                     if (image_autoshow) {
                         ubb = ubb.replace(/(,1)/ig, "");
                     }
+                    // mp3 替换成 audio 标签
+                    if (ubb.substr(ubb.indexOf('=') + 1, 3) === 'mp3') {
+                        ubb = ubb.replace(/upload/g, 'audio')
+                    }
 
                     file.next().next().addClass('uploadsuccess').text('上传成功');
 
@@ -1325,8 +1331,9 @@ function submit() {
         $('#post_content').val(makeRelativeURL($('#post_content').val()));
     }
 
-    // 发表回复
-    reply();
+    if ($('#previewfrm').prev().children().children().children().text().indexOf('解锁') === -1 || confirm('本帖已锁定，确定要回复吗？')) {
+        reply();
+    }
 }
 
 // 显示回复面板，添加与其相关的各种事件绑定
