@@ -10,12 +10,10 @@ define('libcc98', function(exports, module) {
     // 从 cookie 中获取有效信息
     var user_info = (function() {
         var that = {};
-        var cookieObj = chaos.parseCookies(document.cookie);
-        var aspsky = chaos.parseQS(cookieObj['aspsky']);
 
-        that.is_simple = (cookieObj['cc98Simple'] === '1');
-        that.username = aspsky['username'];
-        that.password = aspsky['password'];
+        that.is_simple = (chaos.getCookie('cc98Simple') === '1');
+        that.username = chaos.getSubCookie('aspsky', 'username');
+        that.password = chaos.getSubCookie('aspsky', 'password');
 
         return that;
     })();

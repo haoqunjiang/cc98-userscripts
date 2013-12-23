@@ -14,7 +14,7 @@
 
 
 // a collection of simple browser-side JavaScript snippets
-(function (definition){
+(function(definition) {
     if (typeof define === "function" && define.amd) {
         define(definition);
     } else {
@@ -38,8 +38,11 @@
     },
 
     // parse the url get parameters
-    parseQS: function(url) {
-        url = url.toLowerCase().split('#')[0]; // remove the hash part
+    parseQS: function(url, preserve_case) {
+        if (!preserve_case) {
+            url = url.toLowerCase();
+        }
+        url = url.split('#')[0]; // remove the hash part
         var t = url.indexOf('?');
         var hash = {};
         if (t >= 0) {
@@ -80,9 +83,9 @@
         return result;
     },
 
-    parseCookies: function(theCookie) {
+    parseCookies: function() {
         var cookies = {}; // The object we will return
-        var all = theCookie; // Get all cookies in one big string
+        var all = document.cookie; // Get all cookies in one big string
         if (all === '') // If the property is the empty string
             return cookies; // return an empty object
         var list = all.split('; '); // Split into individual name=value pairs
@@ -95,6 +98,38 @@
             cookies[name] = value; // Store name and value in object
         }
         return cookies;
+    },
+
+    getCookie: function(name) {
+        return chaos.parseCookies()[name];
+    },
+
+    getSubCookie: function(name, sub) {
+        return chaos.parseQS(chaos.getCookie(name), true)[sub];
+    },
+
+    setCookie: function(name, val, options) {
+        options = options || {};
+
+        var expires = options.expires;
+        var path = options.path;
+        var domain = options.domain;
+
+        var text = encodeURIComponent(name) + '=' + val;
+        if (expires instanceof Date) {
+            text += '; expires=' + expires.toGMTString();
+        }
+        text += '; path=' + path;
+        if (domain) {
+            text += '; domain=' + domain;
+        }
+        document.cookie = text;
+    },
+
+    setSubCookie: function(name, sub, val, options) {
+        var hash = chaos.parseQS(chaos.getCookie(name), true);
+        hash[sub] = val;
+        chaos.setCookie(name, chaos.toQS(hash), options);
     },
 
     // 将部分常见的转义后的html转回来
@@ -395,12 +430,10 @@ define('libcc98', function(exports, module) {
     // 从 cookie 中获取有效信息
     var user_info = (function() {
         var that = {};
-        var cookieObj = chaos.parseCookies(document.cookie);
-        var aspsky = chaos.parseQS(cookieObj['aspsky']);
 
-        that.is_simple = (cookieObj['cc98Simple'] === '1');
-        that.username = aspsky['username'];
-        that.password = aspsky['password'];
+        that.is_simple = (chaos.getCookie('cc98Simple') === '1');
+        that.username = chaos.getSubCookie('aspsky', 'username');
+        that.password = chaos.getSubCookie('aspsky', 'password');
 
         return that;
     })();
@@ -829,10 +862,13 @@ define('options', function(exports, module) {
             div.hide();
         });
 
-        (unsafeWindow ? unsafeWindow : window).manage2 += '<br><a id="show-enhancer-options" href="javascript:;">cc98 enhancer 选项</a>';
-        $('#menuDiv').on('click', '#show-enhancer-options', function() {
-            div.show();
-        });
+        // 添加按钮
+        $('<a id="show-enhancer-options" href="javascript:;">enhancer选项</a>')
+            .appendTo($('.TopLighNav1').children().children().eq(0))
+            .before('<img align="absmiddle" src="pic/navspacer.gif"> ')
+            .on('click', function() {
+                div.show();
+            });
 
         chaos.addStyles([
             '#enhancer-options {',

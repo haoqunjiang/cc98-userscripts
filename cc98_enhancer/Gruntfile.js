@@ -1,11 +1,11 @@
 module.exports = function(grunt) {
     grunt.initConfig({
         watch: {
-            files: ['lib/*.js'],
+            files: ['lib/*.js', '../chaos/chaos.js'],
             tasks: ['jsbeautifier', 'concat']
         },
         jsbeautifier: {
-            files: ['lib/*.js']
+            files: ['lib/*.js', '../chaos/chaos.js']
         },
         concat: {
             options: {

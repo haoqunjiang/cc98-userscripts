@@ -119,10 +119,13 @@ define('options', function(exports, module) {
             div.hide();
         });
 
-        (unsafeWindow ? unsafeWindow : window).manage2 += '<br><a id="show-enhancer-options" href="javascript:;">cc98 enhancer 选项</a>';
-        $('#menuDiv').on('click', '#show-enhancer-options', function() {
-            div.show();
-        });
+        // 添加按钮
+        $('<a id="show-enhancer-options" href="javascript:;">enhancer选项</a>')
+            .appendTo($('.TopLighNav1').children().children().eq(0))
+            .before('<img align="absmiddle" src="pic/navspacer.gif"> ')
+            .on('click', function() {
+                div.show();
+            });
 
         chaos.addStyles([
             '#enhancer-options {',
