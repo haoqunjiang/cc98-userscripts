@@ -33,44 +33,63 @@ define('CC98URLMap', function(exports, module) {
         'srt': 499
     };
 
-    var baseURL = 'http://www.cc98.org/';
+    var base_url = 'http://www.cc98.org/';
 
     var that = {};
 
     // 发米
-    that.famiURL = function() {
-        return 'http://www.cc98.org/master_users.asp?action=award';
+    that.fami_url = function() {
+        return base_url + 'master_users.asp?action=award';
     }
 
     // 上传
-    that.uploadURL = function(filename) {
+    that.upload_url = function(filename) {
         var ext = file.name.substring(file.name.lastIndexOf('.') + 1);
         var boardid = file2boardid[ext] || DEFAULT_UPLOAD_BOARDID;
-        return 'http://www.cc98.org/saveannouce_upfile.asp?boardid=' + boardid;
+        return base_url + 'saveannouce_upfile.asp?boardid=' + boardid;
     }
 
     // postURL 发新帖
 
     // 回复
-    that.replyURL = function(boardid) {
-        return 'http://www.cc98.org/SaveReAnnounce.asp?method=Topic&boardid=' + boardid;
+    that.reply_url = function(boardid) {
+        return base_url + 'SaveReAnnounce.asp?method=Topic&boardid=' + boardid;
     }
 
     // 编辑
-    that.editURL = function(boardid, id, replyid) {
-        return 'http://www.cc98.org/SaveditAnnounce.asp?boardid=' + boardid + '&id=' + id + '&replyid=' + replyid;
+    that.edit_url = function(boardid, id, replyid) {
+        return base_url + 'SaveditAnnounce.asp?boardid=' + boardid + '&id=' + id + '&replyid=' + replyid;
     }
 
     // 站短
-    that.pmURL = function() {
-        return 'http://www.cc98.org/messanger.asp?action=send';
+    that.pm_url = function() {
+        return base_url + 'messanger.asp?action=send';
     }
 
     // 登录
-    that.loginURL = function() {
-        return 'http://www.cc98.org/login.asp';
+    that.login_url = function() {
+        return base_url + 'login.asp';
+    }
+
+    // 草稿箱
+    that.drafts_url = function(page_num) {
+        return base_url + 'usersms.asp?action=outbox&page=' + page_num;
+    }
+
+    var chaos = require('chaos');
+
+    // 各种判断用的函数
+    that.isTopicList = function(url) {
+        return chaos.parseURL(url)['path'] === 'list.asp';
+    }
+
+    that.isPostList = function(url) {
+        return chaos.parseURL(url)['path'] === 'dispbbs.asp';
+    }
+
+    that.isXinlin = function(url) {
+        return chaos.parseQS(url)['boardid'] === '182';
     }
 
     module.exports = that;
-
 });

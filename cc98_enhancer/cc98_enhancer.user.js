@@ -375,56 +375,92 @@ define('CC98URLMap', function(exports, module) {
         'srt': 499
     };
 
-    var baseURL = 'http://www.cc98.org/';
+    var base_url = 'http://www.cc98.org/';
 
     var that = {};
 
     // 发米
-    that.famiURL = function() {
-        return 'http://www.cc98.org/master_users.asp?action=award';
+    that.fami_url = function() {
+        return base_url + 'master_users.asp?action=award';
     }
 
     // 上传
-    that.uploadURL = function(filename) {
+    that.upload_url = function(filename) {
         var ext = file.name.substring(file.name.lastIndexOf('.') + 1);
         var boardid = file2boardid[ext] || DEFAULT_UPLOAD_BOARDID;
-        return 'http://www.cc98.org/saveannouce_upfile.asp?boardid=' + boardid;
+        return base_url + 'saveannouce_upfile.asp?boardid=' + boardid;
     }
 
     // postURL 发新帖
 
     // 回复
-    that.replyURL = function(boardid) {
-        return 'http://www.cc98.org/SaveReAnnounce.asp?method=Topic&boardid=' + boardid;
+    that.reply_url = function(boardid) {
+        return base_url + 'SaveReAnnounce.asp?method=Topic&boardid=' + boardid;
     }
 
     // 编辑
-    that.editURL = function(boardid, id, replyid) {
-        return 'http://www.cc98.org/SaveditAnnounce.asp?boardid=' + boardid + '&id=' + id + '&replyid=' + replyid;
+    that.edit_url = function(boardid, id, replyid) {
+        return base_url + 'SaveditAnnounce.asp?boardid=' + boardid + '&id=' + id + '&replyid=' + replyid;
     }
 
     // 站短
-    that.pmURL = function() {
-        return 'http://www.cc98.org/messanger.asp?action=send';
+    that.pm_url = function() {
+        return base_url + 'messanger.asp?action=send';
     }
 
     // 登录
-    that.loginURL = function() {
-        return 'http://www.cc98.org/login.asp';
+    that.login_url = function() {
+        return base_url + 'login.asp';
+    }
+
+    // 草稿箱
+    that.drafts_url = function(page_num) {
+        return base_url + 'usersms.asp?action=outbox&page=' + page_num;
+    }
+
+    var chaos = require('chaos');
+
+    // 各种判断用的函数
+    that.isTopicList = function(url) {
+        return chaos.parseURL(url)['path'] === 'list.asp';
+    }
+
+    that.isPostList = function(url) {
+        return chaos.parseURL(url)['path'] === 'dispbbs.asp';
+    }
+
+    that.isXinlin = function(url) {
+        return chaos.parseQS(url)['boardid'] === '182';
     }
 
     module.exports = that;
-
 });
 
 
 define('libcc98', function(exports, module) {
     var chaos = require('chaos');
     var $ = require('jQuery');
-    var CC98URLMap = require('CC98URLMap');
+    var URLMap = require('CC98URLMap');
 
     var log = function() {
         console.log.apply(console, arguments);
+    }
+
+    // 根据 html 文本，返回一个可以用于解析的 DOM 对象
+    var HTMLParser = function(html) {
+        var doc;
+        if (!html) {
+            doc = document;
+        } else {
+            doc = document.implementation.createHTMLDocument('');
+            doc.documentElement.innerHTML = html;
+        }
+        return doc;
+    }
+
+    // HTMLParser 的 jQuery 封装
+    var $HTMLParser = function(html) {
+        return $(HTMLParser(html));
     }
 
     // 从 cookie 中获取有效信息
@@ -439,20 +475,10 @@ define('libcc98', function(exports, module) {
     })();
 
     var parseTopicList = function(html) {
-        var doc;
-        var topicsDOM;
-        var topics = [];
+        var doc = $HTMLParser(html);
+        var topicsDOM = doc.find('tr[style="vertical-align: middle;"]');
 
-        if (!html) {
-            doc = document;
-        } else {
-            doc = document.implementation.createHTMLDocument('');
-            doc.documentElement.innerHTML = html;
-        }
-
-        topicsDOM = $(doc).find('tr[style="vertical-align: middle;"]');
-
-        topics = topicsDOM.filter(function(index) {
+        return topicsDOM.filter(function(index) {
             // 对简版的修正
             if (user_info.is_simple && index === 0) {
                 return false;
@@ -474,30 +500,19 @@ define('libcc98', function(exports, module) {
 
             return topic;
         }).toArray();
-
-        return topics;
     };
 
     var parsePostList = function(html) {
-        var doc;
-        var postsDOM;
-        var posts = [];
-
-        if (!html) {
-            doc = document;
-        } else {
-            doc = document.implementation.createHTMLDocument('');
-            doc.documentElement.innerHTML = html;
-        }
+        var doc = $HTMLParser(html);
 
         // 98自己的 anchors 也是跳过被删除发言的，所以这里就不考虑了
-        var anchors = $(doc).find('a[name]').filter(function(index) {
+        var anchors = doc.find('a[name]').filter(function(index) {
             return /^\d{1,2}$/g.test(this.name);
         });
 
         // 简版
         if (user_info.is_simple) {
-            posts = anchors.map(function(index, ele) {
+            return anchors.map(function(index, ele) {
                 var post = {};
 
                 var table = $(ele).next();
@@ -519,37 +534,32 @@ define('libcc98', function(exports, module) {
 
                 return post;
             }).toArray();
+        } else { // 完整版
+            return anchors.map(function(index, ele) {
+                var post = {};
 
-            return posts;
+                var table = $(ele).next();
+
+                post.anchor = parseInt(ele.name, 10);
+                post.DOM = table.get(0); // 整个回复的 DOM，在屏蔽时有用
+
+                post.authorDOM = table.children().children().children().eq(0).find('span').get(0);
+                post.author = $(post.authorDOM).children().eq(0).text();
+                post.time = table.children().children().eq(1).children().eq(0).text().trim();
+                post.quote_btn = table.find('img[src="pic/reply.gif"]').parent().get(0); // 暴露接口方便修改 UI
+                post.annouceid = chaos.parseQS(post.quote_btn.href)['replyid']; // 通过「引用」按钮的链接提取
+                post.storey = post.quote_btn.parentNode.textContent.trim(); // 每层楼边上服务器给出的楼层文字
+
+                // 以下可能没有（楼主可见/指定用户可见/回复可见）
+                var user_post = table.find('blockquote script').parent().eq(0);
+
+                post.expression = user_post.find('img[title="发贴心情"]').attr('src'); // 小表情
+                post.title = user_post.children().eq(1).text(); // 标题
+                post.content = user_post.children().eq(3).text(); // 回复内容
+
+                return post;
+            }).toArray();
         }
-
-        // 完整版
-        posts = anchors.map(function(index, ele) {
-            var post = {};
-
-            var table = $(ele).next();
-
-            post.anchor = parseInt(ele.name, 10);
-            post.DOM = table.get(0); // 整个回复的 DOM，在屏蔽时有用
-
-            post.authorDOM = table.children().children().children().eq(0).find('span').get(0);
-            post.author = $(post.authorDOM).children().eq(0).text();
-            post.time = table.children().children().eq(1).children().eq(0).text().trim();
-            post.quote_btn = table.find('img[src="pic/reply.gif"]').parent().get(0); // 暴露接口方便修改 UI
-            post.annouceid = chaos.parseQS(post.quote_btn.href)['replyid']; // 通过「引用」按钮的链接提取
-            post.storey = post.quote_btn.parentNode.textContent.trim(); // 每层楼边上服务器给出的楼层文字
-
-            // 以下可能没有（楼主可见/指定用户可见/回复可见）
-            var user_post = table.find('blockquote script').parent().eq(0);
-
-            post.expression = user_post.find('img[title="发贴心情"]').attr('src'); // 小表情
-            post.title = user_post.children().eq(1).text(); // 标题
-            post.content = user_post.children().eq(3).text(); // 回复内容
-
-            return post;
-        }).toArray();
-
-        return posts;
     };
 
     var getTopicList = function(url, callback) {
@@ -559,7 +569,7 @@ define('libcc98', function(exports, module) {
             getTopicList(url).then(callback);
         }
 
-        if (url && chaos.parseURL(url)['path'] !== 'list.asp') {
+        if (url && !URLMap.isTopicList(url)) {
             return;
         }
 
@@ -580,7 +590,7 @@ define('libcc98', function(exports, module) {
             getPostList(url).then(callback);
         }
 
-        if (url && chaos.parseURL(url)['path'] !== 'dispbbs.asp') {
+        if (url && !URLMap.isPostList(url)) {
             return;
         }
 
@@ -592,6 +602,110 @@ define('libcc98', function(exports, module) {
         }
 
         return promise;
+    };
+
+    var sendPM = function(opts) {
+        opts = opts || {};
+
+        return $.post(
+            URLMap.pm_url(), {
+                'touser': opts['recipient'],
+                'title': opts['subject'],
+                'message': opts['message']
+            });
+    };
+
+    var savePMDraft = function(opts) {
+        opts = opts || {};
+
+        return $.post(
+            URLMap.pm_url(), {
+                'touser': opts['recipient'],
+                'title': opts['subject'],
+                'message': opts['message'],
+                'Submit': '保存'
+            });
+    };
+
+    var parsePMList = function(html) {
+        var doc = $HTMLParser(html);
+        var pmsDOM = doc.find('form[name="inbox"]').children().children().eq(0).children().children().filter(function(index) {
+            return index >= 2;
+        });
+
+        return pmsDOM.map(function(index, ele) {
+            var pm = {};
+            var tr = $(ele);
+
+            pm.username = tr.children().eq(1).text().trim(); // 可能是收件人也可能是发件人故只好命名为 username
+            pm.subject = tr.children().eq(2).text().trim();
+            pm.time = tr.children().eq(3).text().trim();
+            pm.url = tr.children().eq(3).children().attr('href');
+            pm.size = tr.children().eq(4).text().trim();
+            pm.id = tr.children().eq(5).children().val();
+
+            return pm;
+        });
+    }
+
+    // 根据标题搜索草稿，返回第一条符合条件的草稿
+    var getPMDraftBySubject = function(subject, page_num) {
+        if (!page_num) {
+            page_num = 1;
+        }
+        return $.get(URLMap.drafts_url(page_num)).then(function(html) {
+            var doc = $HTMLParser(html);
+            var total_page = doc.find('form[name="inbox"]').children().children().eq(1).children().children().children().children().eq(1).text();
+
+            var pms = parsePMList(html);
+
+            for (var i = 0; i !== pms.length; ++i) {
+                if (pms[i].subject === subject) {
+                    break;
+                }
+            }
+
+            // 如果搜到了
+            if (i < pms.length) {
+                return $.get(pms[i]['url']).then(function(html) {
+                    var doc = $HTMLParser(html);
+                    var pm = {};
+
+                    pm.recipient = doc.find('input[name="touser"]').val();
+                    pm.subject = doc.find('input[name="title"]').val();
+                    pm.message = doc.find('textarea[name="message"]').val();
+                    pm.id = doc.find('input[name="id"]').val();
+
+                    return pm;
+                });
+            } else if (page_num < total_page) {
+                // 如果还有下一页
+                return getPMDraftBySubject(subject, ++page_num);
+            } else {
+                return undefined;
+            }
+        });
+    };
+
+    var getPMDraftByIndex = function(index) {
+        var page_num = Math.ceil((index + 1) / 20);
+        var index = index % 20;
+
+        // 先获取草稿列表，从中得到要找的草稿的地址
+        return $.get(URLMap.drafts_url(page_num)).then(parsePMList).then(function(pms) {
+            // 然后打开草稿，获取其内容
+            return $.get(pms[index]['url']).then(function(html) {
+                var doc = $HTMLParser(html);
+
+                var pm = {};
+                pm.recipient = doc.find('input[name="touser"]').val();
+                pm.subject = doc.find('input[name="title"]').val();
+                pm.message = doc.find('textarea[name="message"]').val();
+                pm.id = doc.find('input[name="id"]').val();
+
+                return pm;
+            });
+        });
     };
 
     var test = function() {
@@ -729,13 +843,17 @@ define('libcc98', function(exports, module) {
     };
 
 
-    var libcc98 = {};
+    var libcc98 = {
+        user_info: user_info,
+        getTopicList: getTopicList,
+        getPostList: getPostList,
+        sendPM: sendPM,
+        savePMDraft: savePMDraft,
+        getPMDraftBySubject: getPMDraftBySubject,
+        getPMDraftByIndex: getPMDraftByIndex,
 
-    libcc98.user_info = user_info;
-    libcc98.getTopicList = getTopicList;
-    libcc98.getPostList = getPostList;
-
-    libcc98.test = test;
+        test: test
+    };
 
     return libcc98;
 });
@@ -1038,13 +1156,10 @@ define('app', function(exports, module) {
     var app = {};
 
     var chaos = require('chaos');
+    var URLMap = require('CC98URLMap');
     var options = require('options');
     var libcc98 = require('libcc98');
     var utils = require('utils');
-
-    var isTopicList = (location.pathname === '/list.asp');
-    var isPostList = (location.pathname === '/dispbbs.asp');
-    var isXinlin = (chaos.parseQS(location.search)['boardid'] === '182');
 
     app.route = function(cond, func) {
         if (cond) {
@@ -1055,10 +1170,10 @@ define('app', function(exports, module) {
     app.init = function() {
         app.route(true, options.addButton); // 给每个界面加上选项菜单
         app.route(true, libcc98.test); // 测试 libcc98 组件
-        app.route(isTopicList, function() {
+        app.route(URLMap.isTopicList(location.href), function() {
             utils.ignore('topics');
         }); // 屏蔽主题帖
-        app.route(isPostList, function() {
+        app.route(URLMap.isPostList(location.href), function() {
             utils.ignore('posts');
         }); // 屏蔽回复内容
     };
