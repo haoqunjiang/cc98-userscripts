@@ -7,7 +7,7 @@ define('app', function(exports, module) {
     var utils = require('utils');
 
     var isTopicList = (location.pathname === '/list.asp');
-    var isThreadList = (location.pathname === '/dispbbs.asp');
+    var isPostList = (location.pathname === '/dispbbs.asp');
     var isXinlin = (chaos.parseQS(location.search)['boardid'] === '182');
 
     app.route = function(cond, func) {
@@ -17,13 +17,13 @@ define('app', function(exports, module) {
     };
 
     app.init = function() {
-        app.route(true, options.show); // 给每个界面加上选项菜单
+        app.route(true, options.addButton); // 给每个界面加上选项菜单
         app.route(true, libcc98.test); // 测试 libcc98 组件
         app.route(isTopicList, function() {
-            utils.block('topics');
+            utils.ignore('topics');
         }); // 屏蔽主题帖
-        app.route(isThreadList, function() {
-            utils.block('threads');
+        app.route(isPostList, function() {
+            utils.ignore('posts');
         }); // 屏蔽回复内容
     };
 

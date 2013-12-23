@@ -3,7 +3,7 @@ define('options', function(exports, module) {
     var options = {};
     // 默认选项
     var DEFAULT_OPTIONS = {
-        "blocked_users": {
+        "ignored_users": {
             "description": "屏蔽用户名单",
             "value": []
         }
@@ -22,7 +22,14 @@ define('options', function(exports, module) {
                 options[prop] = DEFAULT_OPTIONS[prop];
             }
         }
-        save(options);
+
+        // 屏蔽名单字段名从 blocked_users 改成了 ignored_users
+        // 为了保持兼容……（虽然上一个版本可能只有丁丁姐在用）
+        if (options['blocked_users']) {
+            options['ignored_users'] = options['ignored_users'];
+            delete options['blocked_users'];
+        }
+        save();
     }
 
     var get = function(key) {
@@ -41,8 +48,8 @@ define('options', function(exports, module) {
 
     // 覆盖整个页面的遮罩层、绝对定位的选项卡（50%~80% width）
     // 点确认/取消隐藏界面
-    var show = function() {
-        console.log('options.show');
+    var addButton = function() {
+        console.log('options.addButton');
         var $ = require('jQuery');
         var chaos = require('chaos');
 
@@ -125,11 +132,12 @@ define('options', function(exports, module) {
             '    width: 70%;',
             '    margin: 0 auto;',
             '    border: 1px solid #ccc;',
-            '    border-radius: 10px;',
+            '    border-radius: 5px;',
             '    box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);',
-            '    padding: 10px 20px;',
+            '    padding: 20px;',
             '    background-color: #fff;',
             '}',
+            '#enhancer-options dl { margin: 0; }',
             '#enhancer-options dt, #enhancer-options dd {',
             '    display: inline-block;',
             '    padding-top: 0;',
@@ -178,7 +186,7 @@ define('options', function(exports, module) {
     that.get = get;
     that.set = set;
     that.remove = remove;
-    that.show = show;
+    that.addButton = addButton;
     that.init = init;
     module.exports = that;
 });

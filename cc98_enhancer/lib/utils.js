@@ -6,14 +6,14 @@ define('utils', function(exports, module) {
     var options = require('options');
     var $ = require('jQuery');
 
-    var blocked_users = options.get('blocked_users');
+    var ignored_users = options.get('ignored_users');
 
-    // @param {string} type 'threads'|'topics' 表示屏蔽页面还是屏蔽
-    utils.block = function(type) {
+    // @param {string} type 'posts'|'topics' 表示屏蔽页面还是屏蔽
+    utils.ignore = function(type) {
         var list;
 
-        if (type === 'threads') {
-            list = libcc98.getThreadList();
+        if (type === 'posts') {
+            list = libcc98.getPostList();
         } else if (type === 'topics') {
             list = libcc98.getTopicList();
         } else {
@@ -21,39 +21,37 @@ define('utils', function(exports, module) {
         }
 
         list.forEach(function(item) {
-            if (blocked_users.indexOf(item.author) === -1) {
+            if (ignored_users.indexOf(item.author) === -1) {
                 return;
             }
 
-            var blocked = $(item.DOM);
+            var ignored = $(item.DOM);
             var width = item.DOM.clientWidth;
 
             // 隐藏 DOM 节点
-            blocked.find('a, span, font, td').css('color', '#999');
-            blocked.addClass('blocked');
-            blocked.hide();
+            ignored.find('a, span, font, td').css('color', '#999');
+            ignored.addClass('ignored');
+            ignored.hide();
 
             // 增加恢复功能
-            var collapsed;
-            if (type === 'topics') {
-                collapsed = $('<tr class="collapsed-item"><td colspan="5"></td></tr>');
-            } else {
-                collapsed = $('<div class="collapsed-item"></div>');
-                collapsed.css({
-                    'width': '97%',
-                    'margin': 'auto',
-                    'border': '0'
-                });
-            }
+            var collapsed = $((type === 'topics') ? '<tr class="collapsed-item"><td colspan="5"></td></tr>' :
+                '<div class="collapsed-item"></div>');
             var switcher = $('<a class="collapsed-switcher" href="javascript:;">该帖已被屏蔽，点击展开</a>')
 
             switcher.click(function() {
-                blocked.toggle();
+                ignored.toggle();
                 switcher.text(switcher.text() === '该帖已被屏蔽，点击展开' ? '帖子已展开，点击屏蔽' : '该帖已被屏蔽，点击展开');
             });
 
             chaos.addStyles([
+                '.ignored a, .ignored span, .ignored font, .ignored td { color: #999 !important; }',
+
                 '.collapsed-item td { padding: 0; }',
+                'div.collapsed-item {',
+                '   width: 97%;',
+                '   margin: auto;',
+                '   border: 0;',
+                '}',
 
                 '.collapsed-switcher {',
                 '   display: block;',
@@ -72,7 +70,7 @@ define('utils', function(exports, module) {
 
             (type === 'topics' ? collapsed.children() : collapsed).append(switcher);
 
-            blocked.before(collapsed);
+            ignored.before(collapsed);
         });
     };
 
