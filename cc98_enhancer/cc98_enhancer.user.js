@@ -471,17 +471,18 @@ define('libcc98', function(exports, module) {
 
                 post.anchor = parseInt(ele.name, 10);
                 post.DOM = table.get(0); // 整个回复的 DOM，在屏蔽时有用
-                post.authorDOM = table.find('.usernamedisp').find('b').get(0);
-                post.author = $(post.authorDOM).text();
-                post.time;
-                post.storey; // 每层楼边上服务器给出的楼层数
 
-                post.annouceid; // 通过「引用」按钮的链接提取
+                post.authorDOM = table.find('.usernamedisp').find('span, b').get(0); // 心灵是 span，普通帖子是 b 套着个 a
+                post.author = post.authorDOM.textContent;
+                post.time = post.authorDOM.parentNode.textContent.replace(/.*发表于(.*(AM|PM)).*/g, '$1').trim();
+                post.quote_btn = $(post.authorDOM).next().next().get(0);
+                post.annouceid = chaos.parseQS(post.quote_btn.href)['replyid']; // 通过「引用」按钮的链接提取
+                post.storey = post.authorDOM.parentNode.textContent.replace(/^(.*)该贴由.*/g, '$1').trim();; // 每层楼边上服务器给出的楼层数
 
                 // 以下可能没有（楼主可见/指定用户可见/回复可见）
-                post.content; // 回复内容
-                post.expression; // 小表情
-                post.title; // 标题
+                post.expression = table.find('.usernamedisp').next().attr('src'); // 小表情
+                post.title = table.find('.usernamedisp').next().next().text(); // 标题
+                post.content = table.find('.usernamedisp').next().next().next().next().text(); // 回复内容
 
                 return post;
             }).toArray();
@@ -498,11 +499,11 @@ define('libcc98', function(exports, module) {
             post.anchor = parseInt(ele.name, 10);
             post.DOM = table.get(0); // 整个回复的 DOM，在屏蔽时有用
 
-            post.authorDOM = table.children().children().children().eq(0).find('b').parent().get(0);
+            post.authorDOM = table.children().children().children().eq(0).find('span').get(0);
             post.author = $(post.authorDOM).children().eq(0).text();
             post.time = table.children().children().eq(1).children().eq(0).text().trim();
             post.quote_btn = table.find('img[src="pic/reply.gif"]').parent().get(0); // 暴露接口方便修改 UI
-            post.annouceid = chaos.parseQS(post.quote_btn.href)['replyID']; // 通过「引用」按钮的链接提取
+            post.annouceid = chaos.parseQS(post.quote_btn.href)['replyid']; // 通过「引用」按钮的链接提取
             post.storey = post.quote_btn.parentNode.textContent.trim(); // 每层楼边上服务器给出的楼层文字
 
             // 以下可能没有（楼主可见/指定用户可见/回复可见）
@@ -532,11 +533,7 @@ define('libcc98', function(exports, module) {
         // 不带任何参数表示同步调用，返回当前页的帖子列表
         if (!url) {
             return parseTopicList();
-        } else if (url === location.href) { // 异步获取当前页的列表（可能是在某个循环中无意中循环到了本页，所以整体风格仍然是异步）
-            deferred = $.Deferred();
-            promise = deferred.promise().then(parseTopicList);
-            deferred.resolve(); // 不传任何返回值到 parseTopicList，用来告知它现在是在解析当前页
-        } else {
+        } else { // 不然的话异步获取页面源码再解析（考虑到多重引用什么的也需要重新请求页面，故不必判断网址以节省一次请求）
             promise = $.get(url).then(parseTopicList);
         }
 
@@ -557,10 +554,6 @@ define('libcc98', function(exports, module) {
         // 不带任何参数表示同步调用，返回当前页的回复列表
         if (!url) {
             return parsePostList();
-        } else if (url === location.href) { // 异步获取当前页的列表
-            deferred = $.Deferred();
-            promise = deferred.promise().then(parsePostList);
-            deferred.resolve(); // 不传任何返回值到 parsePostList，用来告知它现在是在解析当前页
         } else {
             promise = $.get(url).then(parsePostList);
         }
@@ -589,20 +582,15 @@ define('libcc98', function(exports, module) {
             log(topics[9]);
         });
 
-        //////////////////////////////////////////////////////////////////////////
-        // 以上均已测试通过
-        //////////////////////////////////////////////////////////////////////////
-
-        */
         // 普通帖子
         getPostList('http://www.cc98.org/dispbbs.asp?BoardID=186&id=4108287').then(function(posts) {
             log('测试普通帖子');
-            log(posts[1]);
+            log(posts[0]);
         });
-        /*
+
         // 蓝名用户
         getPostList('http://www.cc98.org/dispbbs.asp?boardID=357&ID=3469578').then(function(posts) {
-            log('测试红名用户');
+            log('测试蓝名用户');
             log(posts[0]);
         });
 
@@ -624,6 +612,12 @@ define('libcc98', function(exports, module) {
             log(posts[1]);
         });
 
+        //////////////////////////////////////////////////////////////////////////
+        // 以上均已测试通过
+        //////////////////////////////////////////////////////////////////////////
+
+        */
+        /*
         // 回复可见（不可见）
         getPostList('http://www.cc98.org/dispbbs.asp?boardID=182&ID=3652234').then(function(posts) {
             log('回复可见帖子首楼');
@@ -639,7 +633,7 @@ define('libcc98', function(exports, module) {
             log('回复可见帖子中的可见帖');
             log(posts[1]);
         });
-
+        
         // 被删除帖子
         getPostList('http://www.cc98.org/dispbbs.asp?BoardID=144&id=4133896').then(function(posts) {
             log('测试被删除帖子');
