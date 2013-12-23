@@ -730,15 +730,6 @@ define('libcc98', function(exports, module) {
     };
 
     var test = function() {
-        getPMDraftBySubject('test19').then(function(pm) {
-            return deleteDraft(pm.id)
-                .then(function() {
-                    deleteTrash(pm.id);
-                });
-        });
-        getPMDraftByIndex(1).then(function(pm) {
-            log(pm);
-        })
         /*
         // 普通版面
         getTopicList('http://www.cc98.org/list.asp?boardid=81').then(function(topics) {
@@ -881,6 +872,8 @@ define('libcc98', function(exports, module) {
         savePMDraft: savePMDraft,
         getPMDraftBySubject: getPMDraftBySubject,
         getPMDraftByIndex: getPMDraftByIndex,
+        deleteDraft: deleteDraft,
+        deleteTrash: deleteTrash,
 
         test: test
     };
