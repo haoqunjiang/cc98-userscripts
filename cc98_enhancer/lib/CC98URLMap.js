@@ -76,6 +76,10 @@ define('CC98URLMap', function(exports, module) {
         return base_url + 'usersms.asp?action=outbox&page=' + page_num;
     }
 
+    that.delete_pm_url = function() {
+        return base_url + 'messanger.asp';
+    }
+
     var chaos = require('chaos');
 
     // 各种判断用的函数

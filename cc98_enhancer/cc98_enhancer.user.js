@@ -418,6 +418,10 @@ define('CC98URLMap', function(exports, module) {
         return base_url + 'usersms.asp?action=outbox&page=' + page_num;
     }
 
+    that.delete_pm_url = function() {
+        return base_url + 'messanger.asp';
+    }
+
     var chaos = require('chaos');
 
     // 各种判断用的函数
@@ -692,9 +696,11 @@ define('libcc98', function(exports, module) {
         var index = index % 20;
 
         // 先获取草稿列表，从中得到要找的草稿的地址
-        return $.get(URLMap.drafts_url(page_num)).then(parsePMList).then(function(pms) {
-            // 然后打开草稿，获取其内容
-            return $.get(pms[index]['url']).then(function(html) {
+        return $.get(URLMap.drafts_url(page_num))
+            .then(parsePMList)
+            .then(function(pms) {
+                return $.get(pms[index]['url']);
+            }).then(function(html) {
                 var doc = $HTMLParser(html);
 
                 var pm = {};
@@ -705,10 +711,34 @@ define('libcc98', function(exports, module) {
 
                 return pm;
             });
-        });
+    };
+
+    var deleteDraft = function(id) {
+        return $.post(
+            URLMap.delete_pm_url(), {
+                id: id,
+                action: '删除草稿'
+            });
+    };
+
+    var deleteTrash = function(id) {
+        return $.post(
+            URLMap.delete_pm_url(), {
+                id: id,
+                action: '删除垃圾'
+            });
     };
 
     var test = function() {
+        getPMDraftBySubject('test19').then(function(pm) {
+            return deleteDraft(pm.id)
+                .then(function() {
+                    deleteTrash(pm.id);
+                });
+        });
+        getPMDraftByIndex(1).then(function(pm) {
+            log(pm);
+        })
         /*
         // 普通版面
         getTopicList('http://www.cc98.org/list.asp?boardid=81').then(function(topics) {
