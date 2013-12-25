@@ -83,7 +83,7 @@ define('libcc98', function(exports, module) {
 
                 post.authorDOM = table.find('.usernamedisp').find('span, b').get(0); // 心灵是 span，普通帖子是 b 套着个 a
                 post.author = post.authorDOM.textContent;
-                post.time = post.authorDOM.parentNode.textContent.replace(/.*发表于(.*(AM|PM)).*/g, '$1').trim();
+                post.time = post.authorDOM.parentNode.textContent.replace(/.*发表于(.*(AM|Message)).*/g, '$1').trim();
                 post.quote_btn = $(post.authorDOM).next().next().get(0);
                 post.annouceid = chaos.parseQS(post.quote_btn.href)['replyid']; // 通过「引用」按钮的链接提取
                 post.storey = post.authorDOM.parentNode.textContent.replace(/^(.*)该贴由.*/g, '$1').trim();; // 每层楼边上服务器给出的楼层数
@@ -165,30 +165,44 @@ define('libcc98', function(exports, module) {
         return promise;
     };
 
-    var sendPM = function(opts) {
+    var sendMessage = function(opts) {
         opts = opts || {};
 
         return $.post(
-            URLMap.pm_url(), {
+            URLMap.send_message_url(), {
                 'touser': opts['recipient'],
                 'title': opts['subject'],
                 'message': opts['message']
-            });
-    };
+            }).then(function(html) {
+            // 成功就返回被删除的消息 id，不然返回一个 rejected promise
+            if (html.indexOf('论坛成功信息') !== -1) {
+                return;
+            } else {
+                return $.Deferred().reject('发送站短失败').promise();
+            };
+        });
+    }
 
-    var savePMDraft = function(opts) {
+    var saveDraft = function(opts) {
         opts = opts || {};
 
         return $.post(
-            URLMap.pm_url(), {
+            URLMap.send_message_url(), {
                 'touser': opts['recipient'],
                 'title': opts['subject'],
                 'message': opts['message'],
                 'Submit': '保存'
-            });
-    };
+            }).then(function(html) {
+            // 成功就返回被删除的消息 id，不然返回一个 rejected promise
+            if (html.indexOf('论坛成功信息') !== -1) {
+                return;
+            } else {
+                return $.Deferred().reject('保存草稿失败').promise();
+            };;
+        });
+    }
 
-    var parsePMList = function(html) {
+    var parseMessageList = function(html) {
         var doc = $HTMLParser(html);
         var pmsDOM = doc.find('form[name="inbox"]').children().children().eq(0).children().children().filter(function(index) {
             return index >= 2;
@@ -209,58 +223,71 @@ define('libcc98', function(exports, module) {
         });
     }
 
-    // 根据标题搜索草稿，返回第一条符合条件的草稿
-    var getPMDraftBySubject = function(subject, page_num) {
-        if (!page_num) {
-            page_num = 1;
-        }
-        return $.get(URLMap.drafts_url(page_num)).then(function(html) {
-            var doc = $HTMLParser(html);
-            var total_page = doc.find('form[name="inbox"]').children().children().eq(1).children().children().children().children().eq(1).text();
+    // 根据标题搜索草稿，返回第一条符合条件的草稿的 meta 信息
+    var getMessageMeta = function(url_map_function) {
 
-            var pms = parsePMList(html);
+        function _get_meta(subject, page_num) {
+            if (!page_num) {
+                page_num = 1;
+            }
 
-            for (var i = 0; i !== pms.length; ++i) {
-                if (pms[i].subject === subject) {
-                    break;
+            return $.get(url_map_function(page_num)).then(function(html) {
+                var doc = $HTMLParser(html);
+                var total_page = doc.find('form[name="inbox"]').children().children().eq(1).children().children().children().children().eq(1).text();
+
+                var pms = parseMessageList(html);
+
+                // 搜索符合条件的草稿
+                for (var i = 0; i !== pms.length; ++i) {
+                    if (pms[i].subject === subject) {
+                        return pms[i];
+                    }
                 }
-            }
 
-            // 如果搜到了
-            if (i < pms.length) {
-                return $.get(pms[i]['url']).then(function(html) {
-                    var doc = $HTMLParser(html);
-                    var pm = {};
+                if (page_num < total_page) {
+                    return _get_meta(subject, ++page_num); // 查找下一页
+                } else {
+                    return $.Deferred().reject('找不到标题为' + subject + '的站短').promise(); // return a rejected promise
+                }
+            });
+        };
 
-                    pm.recipient = doc.find('input[name="touser"]').val();
-                    pm.subject = doc.find('input[name="title"]').val();
-                    pm.message = doc.find('textarea[name="message"]').val();
-                    pm.id = doc.find('input[name="id"]').val();
-
-                    return pm;
-                });
-            } else if (page_num < total_page) {
-                // 如果还有下一页
-                return getPMDraftBySubject(subject, ++page_num);
-            } else {
-                return undefined;
-            }
-        });
+        return _get_meta;
     };
 
-    var getPMDraftByIndex = function(index) {
-        var page_num = Math.ceil((index + 1) / 20);
-        var index = index % 20;
+    var getMessageID = function(url_map_function) {
+        return function(subject) {
+            return getMessageMeta(url_map_function)(subject).then(function(meta) {
+                return meta.id;
+            });
+        };
+    };
 
-        // 先获取草稿列表，从中得到要找的草稿的地址
-        return $.get(URLMap.drafts_url(page_num))
-            .then(parsePMList)
-            .then(function(pms) {
-                return $.get(pms[index]['url']);
-            }).then(function(html) {
+    var getMessageURL = function(url_map_function) {
+        return function(subject) {
+            return getMessageMeta(url_map_function)(subject).then(function(meta) {
+                return meta.url;
+            });
+        };
+    };
+
+
+    var getDraftID = getMessageID(URLMap['drafts_url']);
+    var getDraftURL = getMessageURL(URLMap['drafts_url']);
+
+    var getSentID = getMessageID(URLMap['sent_url']);
+    var getSentURL = getMessageURL(URLMap['sent_url']);
+
+    var getRecievedID = getMessageID(URLMap['inbox_url']);
+    var getRecievedURL = getMessageURL(URLMap['inbox_url']);
+
+    var getDraft = function(subject) {
+        return getDraftURL(subject)
+            .then($.get)
+            .then(function(html) {
                 var doc = $HTMLParser(html);
-
                 var pm = {};
+
                 pm.recipient = doc.find('input[name="touser"]').val();
                 pm.subject = doc.find('input[name="title"]').val();
                 pm.message = doc.find('textarea[name="message"]').val();
@@ -270,20 +297,27 @@ define('libcc98', function(exports, module) {
             });
     };
 
-    var deleteDraft = function(id) {
+    var deleteMessage = function(id, action) {
         return $.post(
-            URLMap.delete_pm_url(), {
+            URLMap.delete_message_url(), {
                 id: id,
-                action: '删除草稿'
-            });
+                action: action
+            }).then(function(html) {
+            // 成功就返回被删除的消息 id，不然返回一个 rejected promise
+            if (html.indexOf('论坛成功信息') !== -1) {
+                return id;
+            } else {
+                return $.Deferred().reject('删除消息失败').promise();
+            }
+        });
+    };
+
+    var deleteDraft = function(id) {
+        return deleteMessage(id, '删除草稿');
     };
 
     var deleteTrash = function(id) {
-        return $.post(
-            URLMap.delete_pm_url(), {
-                id: id,
-                action: '删除垃圾'
-            });
+        return deleteMessage(id, '删除垃圾');
     };
 
     var test = function() {
@@ -425,10 +459,17 @@ define('libcc98', function(exports, module) {
         user_info: user_info,
         getTopicList: getTopicList,
         getPostList: getPostList,
-        sendPM: sendPM,
-        savePMDraft: savePMDraft,
-        getPMDraftBySubject: getPMDraftBySubject,
-        getPMDraftByIndex: getPMDraftByIndex,
+        sendMessage: sendMessage,
+        saveDraft: saveDraft,
+
+        getDraftID: getDraftID,
+        getDraftURL: getDraftURL,
+        getSentID: getSentID,
+        getSentURL: getSentURL,
+        getRecievedID: getRecievedID,
+        getRecievedURL: getRecievedURL,
+
+        getDraft: getDraft,
         deleteDraft: deleteDraft,
         deleteTrash: deleteTrash,
 

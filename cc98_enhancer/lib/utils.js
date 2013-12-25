@@ -36,12 +36,15 @@ define('utils', function(exports, module) {
             // 增加恢复功能
             var collapsed = $((type === 'topics') ? '<tr class="collapsed-item"><td colspan="5"></td></tr>' :
                 '<div class="collapsed-item"></div>');
-            var switcher = $('<a class="collapsed-switcher" href="javascript:;">该帖已被屏蔽，点击展开</a>')
 
-            switcher.click(function() {
-                ignored.toggle();
-                switcher.text(switcher.text() === '该帖已被屏蔽，点击展开' ? '帖子已展开，点击屏蔽' : '该帖已被屏蔽，点击展开');
-            });
+            $('<a class="collapsed-switcher" href="javascript:;">该帖已被屏蔽，点击展开</a>')
+                .appendTo(type === 'topics' ? collapsed.children() : collapsed)
+                .click(function() {
+                    ignored.toggle();
+                    this.textContent = (this.textContent === '该帖已被屏蔽，点击展开' ? '帖子已展开，点击屏蔽' : '该帖已被屏蔽，点击展开');
+                });
+
+            ignored.before(collapsed);
 
             chaos.addStyles([
                 '.ignored a, .ignored span, .ignored font, .ignored td { color: #999 !important; }',
@@ -67,10 +70,6 @@ define('utils', function(exports, module) {
                 '}',
 
             ].join('\n'));
-
-            (type === 'topics' ? collapsed.children() : collapsed).append(switcher);
-
-            ignored.before(collapsed);
         });
     };
 

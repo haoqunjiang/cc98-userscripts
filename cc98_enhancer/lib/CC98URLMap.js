@@ -40,60 +40,71 @@ define('CC98URLMap', function(exports, module) {
     // 发米
     that.fami_url = function() {
         return base_url + 'master_users.asp?action=award';
-    }
+    };
 
     // 上传
     that.upload_url = function(filename) {
         var ext = file.name.substring(file.name.lastIndexOf('.') + 1);
         var boardid = file2boardid[ext] || DEFAULT_UPLOAD_BOARDID;
         return base_url + 'saveannouce_upfile.asp?boardid=' + boardid;
-    }
+    };
 
     // postURL 发新帖
 
     // 回复
     that.reply_url = function(boardid) {
         return base_url + 'SaveReAnnounce.asp?method=Topic&boardid=' + boardid;
-    }
+    };
 
     // 编辑
     that.edit_url = function(boardid, id, replyid) {
         return base_url + 'SaveditAnnounce.asp?boardid=' + boardid + '&id=' + id + '&replyid=' + replyid;
-    }
+    };
 
     // 站短
-    that.pm_url = function() {
+    that.send_message_url = function() {
         return base_url + 'messanger.asp?action=send';
-    }
+    };
 
     // 登录
     that.login_url = function() {
         return base_url + 'login.asp';
-    }
+    };
 
     // 草稿箱
     that.drafts_url = function(page_num) {
         return base_url + 'usersms.asp?action=outbox&page=' + page_num;
-    }
+    };
 
-    that.delete_pm_url = function() {
+    // 收件箱
+    that.inbox_url = function(page_num) {
+        return base_url + 'usersms.asp?action=inbox&page=' + page_num;
+    };
+
+    // 已发送
+    that.sent_url = function(page_num) {
+        return base_url + 'usersms.asp?action=issend&page=' + page_num;
+    };
+
+    // 删除站短
+    that.delete_message_url = function() {
         return base_url + 'messanger.asp';
-    }
+    };
 
     var chaos = require('chaos');
 
     // 各种判断用的函数
     that.isTopicList = function(url) {
         return chaos.parseURL(url)['path'] === 'list.asp';
-    }
+    };
 
     that.isPostList = function(url) {
         return chaos.parseURL(url)['path'] === 'dispbbs.asp';
-    }
+    };
 
     that.isXinlin = function(url) {
         return chaos.parseQS(url)['boardid'] === '182';
-    }
+    };
 
     module.exports = that;
 });

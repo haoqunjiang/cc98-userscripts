@@ -9,12 +9,12 @@ define('options', function(exports, module) {
         }
     };
 
-    var save = function() {
-        localStorage.setItem('enhancer_options', JSON.stringify(options));
-    }
+    var save = function(the_options) {
+        localStorage.setItem('enhancer_options', JSON.stringify(the_options || options));
+    };
 
-    var restore = function() {
-        options = JSON.parse(localStorage.getItem('enhancer_options')) || {};
+    var restore = function(the_options) {
+        options = the_options || JSON.parse(localStorage.getItem('enhancer_options')) || {};
 
         // 如果新增了默认配置项，则加入到原配置中
         for (var prop in DEFAULT_OPTIONS) {
@@ -30,21 +30,43 @@ define('options', function(exports, module) {
             delete options['blocked_users'];
         }
         save();
-    }
+    };
 
     var get = function(key) {
         return options[key].value;
-    }
+    };
 
     var set = function(key, value) {
         options[key].value = value;
         save();
-    }
+    };
 
     var remove = function(key) {
         delete options[key].value;
         save();
-    }
+    };
+
+    var upload = function() {
+        var libcc98 = require('libcc98');
+        return libcc98.getDraftID('[enhancer选项]')
+            .then(libcc98.deleteDraft)
+            .then(libcc98.deleteTrash)
+            .always(function() {
+                libcc98.saveDraft({
+                    'recipient': libcc98.user_info.username,
+                    'subject': '[enhancer选项]',
+                    'message': JSON.stringify(options)
+                });
+            });
+    };
+
+    var download = function() {
+        var libcc98 = require('libcc98');
+        return libcc98.getDraft('[enhancer选项]')
+            .then(function(pm) {
+                restore(JSON.parse(pm.message));
+            });
+    };
 
     // 覆盖整个页面的遮罩层、绝对定位的选项卡（50%~80% width）
     // 点确认/取消隐藏界面
@@ -73,7 +95,12 @@ define('options', function(exports, module) {
             dl.append(dt).append(dd);
             div.append(dl);
         }
-        div.append('<div><button class="enhancer-btn" id="submit-options">确定</button></div>');
+        div.append(
+            ['<div><button class="enhancer-btn" id="submit-options">确定</button>',
+                '<button class="enhancer-btn" id="upload-options">上传设置</button>',
+                '<button class="enhancer-btn" id="download-options">下载设置</button>',
+                '</div>'
+            ].join('\n'));
         $('body').append(div);
 
         div.hide();
@@ -117,6 +144,23 @@ define('options', function(exports, module) {
 
         $('#submit-options').click(function(e) {
             div.hide();
+        });
+
+        $('#upload-options').click(function() {
+            upload()
+                .then(function() {
+                    alert('上传成功');
+                }, function() {
+                    alert('上传失败');
+                });
+        });
+        $('#download-options').click(function() {
+            download()
+                .then(function() {
+                    alert('下载成功，刷新页面后生效');
+                }, function() {
+                    alert('下载失败');
+                });
         });
 
         // 添加按钮
