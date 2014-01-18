@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.6.5
+// @version        0.6.6
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    
@@ -12,6 +12,7 @@
 
 // todo:
 // 上传 mp3 的标签改一下
+
 // 注意，本脚本中所有storey都是以1-9表示对应楼层，0表示第十层（为了跟脚本快捷键一致╮(╯_╰)╭
 // 而index表示楼层的序号，0是第一楼，1是第二楼……
 
@@ -177,7 +178,7 @@ var _cc98 = (function() {
     // 因此引起的发米机发米楼层可能不精确的问题也没办法了……
     var NAME_RE = /(?:name="\d+">| middle;">&nbsp;)\s*<span style="color:\s*\#\w{6}\s*;"><b>([^<]+)<\/b><\/span>/g;
     var ANNOUNCEID_RE = /<a name="(\d{2,})">/g; // 注意网页上<a name="1">之类的标签是作为#1的anchor出现的，所以限定至少两个数字
-    var POST_TIME_RE = /<\/a>\s*(\d+\/\d+\/\d{4} \d+:\d+:\d+.*)\s*<\/td>/g;
+    var POST_TIME_RE = /<\/a>\s*(\d+\/\d+\/\d+ \d+:\d+:\d+.*)\s*<\/td>/g;
 
     var POST_RE = /\s<span id="ubbcode[^>]*>(.*)<\/span>|>本楼只允许特定用户查看|>该帖子设置了楼主可见|>该账号已经被禁止|>DisplayDel()/ig;
 
