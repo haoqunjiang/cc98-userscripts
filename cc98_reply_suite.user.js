@@ -6,7 +6,7 @@
 // @author         soda <sodazju@gmail.com>
 // @description    
 // @include        http://www.cc98.org/dispbbs.asp*
-// @require        http://libs.baidu.com/jquery/2.0.3/jquery.min.js
+// @require        http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js
 // @run-at         document-end
 // ==/UserScript==
 

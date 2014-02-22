@@ -1,3 +1,5 @@
+// 各种小功能，包括屏蔽、水楼统计、页内搜索
+
 define('utils', function(exports, module) {
     var utils = {};
 
@@ -8,6 +10,7 @@ define('utils', function(exports, module) {
 
     var ignored_users = options.get('ignored_users');
 
+    // todo: add "block this" button
     // @param {string} type 'posts'|'topics' 表示屏蔽页面还是屏蔽
     utils.ignore = function(type) {
         var list;
