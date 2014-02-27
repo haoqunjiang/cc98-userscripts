@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_fami
 // @name           cc98 fami
-// @version        1.1
+// @version        1.1.1
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description    cc98 发米/扣米机
