@@ -1,6 +1,6 @@
 cc98scripts
 ===========
-除 cc98 enhancer 以外的项目都不再增加新功能，只提供 bug fix
+暂时停止更新
 
 用于[浙江大学 cc98 论坛](http://www.cc98.org/)的几个用户脚本
 
