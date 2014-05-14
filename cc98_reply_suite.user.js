@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.6.8
+// @version        0.6.9
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description
