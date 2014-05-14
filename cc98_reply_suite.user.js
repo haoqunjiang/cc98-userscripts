@@ -1,10 +1,10 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.6.7
+// @version        0.6.8
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
-// @description    
+// @description
 // @include        http://www.cc98.org/dispbbs.asp*
 // @run-at         document-end
 // ==/UserScript==
@@ -275,10 +275,10 @@ var _cc98 = (function() {
         }
 
         if (!opts.password) {
-            opts.password = _lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['password'];
+            opts.password = $('input[name=passwd]'); //_lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['password'];
         }
         if (!opts.username) {
-            opts.username = _lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['username'];
+            opts.username = $('input[name=UserName]'); //_lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['username'];
         }
 
         var data = {
@@ -391,7 +391,7 @@ var _cc98 = (function() {
     that.parseTopicPage = function(htmlText) {
         if (!htmlText) { htmlText = document.body.innerHTML; }
         var postList = [];
-        
+
         var nameArr = htmlText.match(NAME_RE);
         nameArr.forEach(function(name) {
             var post = {};
@@ -456,7 +456,7 @@ var _cc98 = (function() {
         }
         params['page'] = '';    // 去掉page
 
-        // 
+        //
         if (params['star'] && maxPageFix && parseInt(params['star'], 10) > _cc98.pageCount()) {
             params['star'] = _cc98.pageCount();
         }
@@ -1196,7 +1196,7 @@ function makeRelativeURL(content) {
             return '[url]' + _cc98.formatURL(match) + '[/url]';
         } else {
             return '[url=' + _cc98.formatURL(match.substring(5));
-        } 
+        }
     });
 }
 
