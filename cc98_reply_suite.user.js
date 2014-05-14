@@ -275,10 +275,10 @@ var _cc98 = (function() {
         }
 
         if (!opts.password) {
-            opts.password = $('input[name=passwd]'); //_lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['password'];
+            opts.password = document.querySelector('input[name=passwd]').value; //_lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['password'];
         }
         if (!opts.username) {
-            opts.username = $('input[name=UserName]'); //_lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['username'];
+            opts.username = document.querySelector('input[name=UserName]').value; //_lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['username'];
         }
 
         var data = {
