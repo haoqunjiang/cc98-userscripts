@@ -39,6 +39,9 @@ var _lib = {
 
     // parse the url get parameters
     parseQS: function(url) {
+        if (!url) {
+            return;
+        }
         url = url.toLowerCase().split('#')[0];  // remove the hash part
         var t = url.indexOf('?');
         var params;
@@ -446,8 +449,12 @@ var _cc98 = (function() {
         var hash = urlObj['hash'] ? ('#' + urlObj['hash']) : '';
 
         // 不是dispbbs.asp开头的链接，只去掉空的get参数，转为相对链接，不做其他处理
-        if (urlObj['path'] === 'dispbbs,asp') {
-            return '/' + urlObj['path'] + '?' + _lib.toQS(params) + hash;
+        if (urlObj['path'] !== 'dispbbs,asp') {
+            if (params) {
+                return '/' + urlObj['path'] + '?' + _lib.toQS(params) + hash;
+            } else {
+                return '/' + urlObj['path'] + hash;
+            }
         }
 
         // 如果不是在追踪页面，就去掉replyid
@@ -1193,7 +1200,7 @@ function saveDraft() {
 function makeRelativeURL(content) {
     return content.replace(/(?:\[url=)?(?:http:\/\/)?www\.cc98\.org\/[&=#%\w\+\.\?]+/g, function(match){
         if (match.indexOf('[url=') !== 0) {
-            return '[url]' + _cc98.formatURL(match) + '[/url]';
+            return '[url][u]' + _cc98.formatURL(match) + '[/u][/url]';
         } else {
             return '[url=' + _cc98.formatURL(match.substring(5));
         }
