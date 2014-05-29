@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.6.9
+// @version        0.6.10
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description
@@ -276,14 +276,14 @@ var _cc98 = (function() {
         if (opts["edit"]) {
             postURL = EDIT_URL + "boardid=" + params["boardid"] + "&replyid=" + opts["replyid"] + "&id=" + params["id"];
         }
-
+/*
         if (!opts.password) {
             opts.password = document.querySelector('input[name=passwd]').value; //_lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['password'];
         }
         if (!opts.username) {
             opts.username = document.querySelector('input[name=UserName]').value; //_lib.parseQS(_lib.parseCookies(document.cookie)['aspsky'])['username'];
         }
-
+*/
         var data = {
                 'subject': opts['subject'] || '',
                 'expression': opts['expression'],
@@ -293,13 +293,15 @@ var _cc98 = (function() {
                 'sendsms': opts['sendsms'] ? '1' : '0',
                 'rootid': params['id'],
                 'star': params['star'] || '1',
-                'passwd': opts['password'],
+                //'passwd': opts['password'],
                 'signflag': 'yes',
                 'enableviewerfilter': opts['viewerfilter'] ? '1' : '',
             };
         if (opts['viewerfilter']) {
             data['allowedviewers'] = opts['allowedviewers'] || '';
         }
+
+        console.dir(data)
 
         _lib.ajax({
             'type': 'POST',
@@ -1484,7 +1486,7 @@ function showDialog() {
             '</div>',
             '<div>',
                 '<input type="checkbox" id="show-fast-reply-button">',
-                '<label for="show-fast-reply-button">显示快速回复按钮</label>',
+                '<label for="show-fast-reply-button">显示快速回复和返回顶部</label>',
             '</div>',
             '<div>',
                 '<input type="checkbox" id="always-show-emotions">',
@@ -1745,8 +1747,9 @@ function addButtons() {
 
     // 显示快速回复按钮
     if (options.showFastReplyButton) {
-        $('body').append('<div><a id="fast_reply" title="快速回复"></a></div>');
+        $('body').append('<div id="tooltip-button-group" style="display: none"><a id="fast_reply" title="快速回复"></a></div>');
         $('#fast_reply').click(showDialog);
+        //$('#scroll-to-top').click(function() { $('html,body').animate({ scrollTop: 0 }, 'slow'); });
     }
 }
 
