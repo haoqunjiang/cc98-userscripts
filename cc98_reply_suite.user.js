@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.7.0
+// @version        0.7.1
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description
@@ -1202,7 +1202,7 @@ function saveDraft() {
 function makeRelativeURL(content) {
     return content.replace(/(?:\[url=)?(?:http:\/\/)?www\.cc98\.org\/[&=#%\w\+\.\?]+/g, function(match){
         if (match.indexOf('[url=') !== 0) {
-            return '[url][u]' + _cc98.formatURL(match) + '[/u][/url]';
+            return '[u][url]' + _cc98.formatURL(match) + '[/url][/u]';
         } else {
             return '[url=' + _cc98.formatURL(match.substring(5));
         }
@@ -1759,6 +1759,7 @@ function addButtons() {
                 $('#scroll_to_top').fadeOut('fast');
             }
         });
+        $(window).scroll();
     }
 }
 
