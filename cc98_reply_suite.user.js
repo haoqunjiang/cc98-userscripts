@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.6.10
+// @version        0.7.0
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description
@@ -1747,9 +1747,18 @@ function addButtons() {
 
     // 显示快速回复按钮
     if (options.showFastReplyButton) {
-        $('body').append('<div id="tooltip-button-group" style="display: none"><a id="fast_reply" title="快速回复"></a></div>');
+        $('body').append('<div id="tooltip_button_group"><a id="fast_reply" title="快速回复" href="javascript:void(0)"></a><a id="scroll_to_top" style="display: none" title="回到页首" href="javascript:void(0)"></a></div>');
         $('#fast_reply').click(showDialog);
-        //$('#scroll-to-top').click(function() { $('html,body').animate({ scrollTop: 0 }, 'slow'); });
+        $('#scroll_to_top').click(function() { $('html,body').animate({ scrollTop: 0 }, 'slow'); });
+
+        // show gototop buttons after scroll 100px
+        $(window).on('scroll',function(){
+            if ($(window).scrollTop() > 100) {
+                $('#scroll_to_top').fadeIn('fast');
+            } else {
+                $('#scroll_to_top').fadeOut('fast');
+            }
+        });
     }
 }
 
@@ -2109,13 +2118,16 @@ _lib.addStyles([
         'margin: 0 2px 2px 0;',
         'vertical-align: middle;',
     '}',
-    '#fast_reply {',
-        'display: inline-block;',
-        'background-image: url("http://file.cc98.org/uploadfile/2013/8/13/21275287642.png");',
-        'background-color: #f4f4f4;',
+    '#tooltip_button_group {',
         'position: fixed;',
         'bottom: 30%;',
         'right: 0;',
+        'padding: 0',
+    '}',
+    '#fast_reply, #scroll_to_top {',
+        'display: block;',
+        'background-image: url("http://file.cc98.org/uploadfile/2014/5/29/14283021823.png");',
+        'background-color: #f4f4f4;',
         'width: 30px;',
         'height: 24px;',
         'border: 1px #cdcdcd solid;',
@@ -2124,8 +2136,17 @@ _lib.addStyles([
         'margin: 0;',
         'cursor: pointer;',
     '}',
+    '#fast_reply {',
+        'background-position: 0 90px;',
+    '}',
+    '#scroll_to_top {',
+        'background-position: 0 0;',
+    '}',
     '#fast_reply:hover {',
-        'background-position: 40px;',
+        'background-position: 40px 90px;',
+    '}',
+    '#scroll_to_top:hover {',
+        'background-position: 40px 0;',
     '}',
     '#at-status {',
         'position: absolute;',
