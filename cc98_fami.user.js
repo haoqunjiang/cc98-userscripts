@@ -122,7 +122,7 @@ $cc98 = {
             "data": data,
             "success": opts["callback"],
             "async": opts["async"],
-            
+
         });
     },
 
@@ -150,7 +150,7 @@ $cc98 = {
     // @return {Array}  每个数组元素都有username, annouceid, posttime三个属性
     parseTopicPage: function(htmlText) {
         var postList = [];
-        
+
         var nameArr = htmlText.match(NAME_RE);
         nameArr.forEach(function(name, index, arr) {
             var post = {};
@@ -509,7 +509,7 @@ $(function() {
         }
 
         var type = isaward ? '发米' : '扣米';
-        
+
         reason = $('#reason').val();
         if (!reason) {
             famiPrompt(type + '理由不能为空');
@@ -658,5 +658,4 @@ $(function() {
     }
 
     view();
-});
 });
