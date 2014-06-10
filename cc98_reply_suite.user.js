@@ -6,6 +6,7 @@
 // @author         soda <sodazju@gmail.com>
 // @description
 // @include        http://www.cc98.org/dispbbs.asp*
+// @include        http://*.cc98.lifetoy.org/dispbbs.asp*
 // @run-at         document-end
 // ==/UserScript==
 
@@ -1747,19 +1748,19 @@ function addButtons() {
 
     // 显示快速回复按钮
     if (options.showFastReplyButton) {
-        $('body').append('<div id="tooltip_button_group"><a id="fast_reply" title="快速回复" href="javascript:void(0)"></a><a id="scroll_to_top" style="display: none" title="回到页首" href="javascript:void(0)"></a></div>');
+        $('body').append('<div id="tooltip_button_group"><a id="fast_reply" title="快速回复" href="javascript:void(0)"></a><a id="scroll_to_top" style="visibility: hidden; opacity: 0" title="回到页首" href="javascript:void(0)"></a></div>');
         $('#fast_reply').click(showDialog);
         $('#scroll_to_top').click(function() { $('html,body').animate({ scrollTop: 0 }, 'slow'); });
 
         // show gototop buttons after scroll 100px
         $(window).on('scroll',function(){
-            if ($(window).scrollTop() > 100) {
-                $('#scroll_to_top').fadeIn('fast');
+            if ($(window).scrollTop() != 0) {
+                $('#scroll_to_top').css('visibility', 'visible').fadeTo(200, 1);
             } else {
-                $('#scroll_to_top').fadeOut('fast');
+                $('#scroll_to_top').fadeTo(200, 0).css('visibility', 'hidden');
             }
         });
-        $(window).scroll();
+        //$(window).scroll();
     }
 }
 
