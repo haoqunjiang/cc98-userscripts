@@ -1780,8 +1780,8 @@ function shortcutHandlers(evt) {
 }
 
 function submitShortcut(evt) {
-    // CTRL + ENTER 提交回复
-    if (evt.keyCode === 13 && evt.ctrlKey) {
+    // CTRL/CMD + ENTER 提交回复
+    if (evt.keyCode === 13 && evt.metaKey) {
         submit();
     }
     // ESC 关闭回复框和上传框
