@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.7.1
+// @version        0.7.2
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description
@@ -1781,7 +1781,7 @@ function shortcutHandlers(evt) {
 
 function submitShortcut(evt) {
     // CTRL/CMD + ENTER 提交回复
-    if (evt.keyCode === 13 && evt.metaKey) {
+    if (evt.keyCode === 13 && (evt.metaKey || evt.ctrlKey)) {
         submit();
     }
     // ESC 关闭回复框和上传框
