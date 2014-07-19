@@ -79,10 +79,10 @@ define('options', function(exports, module) {
         for (var prop in DEFAULT_OPTIONS) {
             if (user_options[prop] === undefined) {
                 user_options[prop] = DEFAULT_OPTIONS[prop];
-                save();
             }
         }
 
+        // 默认不保存，免得和云端的冲突，反正是默认配置，保不保存也没区别
     }
 
     function setValue(key, value) {
