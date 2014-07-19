@@ -1,0 +1,12 @@
+{
+  "name": "cc98 blacklist",
+  "version": "0.0.1",
+  "main": "cc98-blacklist.user.js",
+  "description": "blacklist feature for http://www.cc98.org intended to run in GreaseMonkey-like environment",
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-jsbeautifier": "~0.2.3",
+    "grunt-contrib-watch": "~0.5.3"
+  }
+}
