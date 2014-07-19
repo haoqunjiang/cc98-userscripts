@@ -22,4 +22,4 @@
             return cached[id] = (modules[id].exports || modules[id].factory(modules[id].exports = {}, modules[id]) || modules[id].exports);
         }
     };
-})(this);
+})(window); // using `this` will cause error in TamperMonkey (that is, the functions are not registered in the global namespace)
