@@ -1,13 +1,13 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.8.1
+// @version        0.8.2
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description
 // @include        http://www.cc98.org/dispbbs.asp*
 // @include        http://hz.cc98.lifetoy.org/dispbbs.asp*
-// @require        http://libs.baidu.com/jquery/2.0.3/jquery.js
+// @require        http://cdn.staticfile.org/jquery/2.1.1/jquery.js
 // @run-at         document-end
 // ==/UserScript==
 
@@ -540,7 +540,10 @@ define('libcc98', function(exports, module) {
 
                 post.authorDOM = table.find('.usernamedisp').find('span, b').get(0); // 心灵是 span，普通帖子是 b 套着个 a
                 post.author = post.authorDOM.textContent;
-                post.time = post.authorDOM.parentNode.textContent.replace(/.*发表于(.*(AM|Message)).*/g, '$1').trim();
+                post.time = post.authorDOM.parentNode.textContent.match(/\d{4}\/\d{1,2}\/\d{1,2}\s*\d{1,2}:\d{1,2}:\d{1,2}\s*(AM|PM)?/g);
+                if (post.time.length) {
+                    post.time = post.time[0].trim();
+                }
                 post.quote_btn = $(post.authorDOM).next().next().get(0);
                 post.annouceid = chaos.parseQS(post.quote_btn.href).replyid; // 通过「引用」按钮的链接提取
                 post.storey = post.authorDOM.parentNode.textContent.replace(/^(.*)该贴由.*/g, '$1').trim(); // 每层楼边上服务器给出的楼层数
@@ -575,7 +578,7 @@ define('libcc98', function(exports, module) {
                 post.title = user_post.children().eq(1).text(); // 标题
                 post.content = user_post.children().eq(3).html().replace(/\<br\>/ig, '\n'); // 回复内容
 
-                console.log(post);
+
                 return post;
             }).toArray();
         }
@@ -1372,7 +1375,7 @@ $(function() {
 var DEFAULT_OPTIONS = {
     autoSaveInterval: 30,           // 自动保存间隔(秒)，必须是10的倍数
 
-    promptString: '[查看原帖]',   // 原帖链接的提示文字
+    promptString: '[查看原帖]',      // 原帖链接的提示文字
     promptColor: 'royalblue',       //「查看原帖」的颜色
 
     replyTail: "",                  // 小尾巴
@@ -1380,9 +1383,12 @@ var DEFAULT_OPTIONS = {
 
     useRelativeURL: true,           // 使用相对链接
     disableInXinlin: false,         // 在心灵禁用这些设置
+
     showFastReplyButton: true,      // 显示快速回复按钮
     alwaysShowEmotions: false,      // 始终显示表情菜单
-    modifierKey: "alt",            // 快速回复快捷键组合的modifier key
+    replaceNativeQuoteButton: true, // 取代原生引用按钮
+
+    modifierKey: "alt",             // 快速回复快捷键组合的modifier key
     hotKeyCode: 82                  // 快速回复快捷键组合中字母的keyCode
 };
 
@@ -1743,6 +1749,7 @@ function showOptions() {
     $('#use-relative-link').prop('checked', options.useRelativeURL);
     $('#show-fast-reply-button').prop('checked', options.showFastReplyButton);
     $('#always-show-emotions').prop('checked', options.alwaysShowEmotions);
+    $('#replace-native-quote-button').prop('checked', options.replaceNativeQuoteButton);
     $('#modifier-key option[value="ctrl"]').prop('selected', options.modifierKey==='ctrl');
     $('#modifier-key option[value="alt"]').prop('selected', options.modifierKey==='alt');
     for (var i = 65; i <= 90; ++i) {
@@ -1761,6 +1768,7 @@ function saveOptions() {
     options.useRelativeURL = $('#use-relative-link').prop('checked');
     options.showFastReplyButton = $('#show-fast-reply-button').prop('checked');
     options.alwaysShowEmotions = $('#always-show-emotions').prop('checked');
+    options.replaceNativeQuoteButton = $('#replace-native-quote-button').prop('checked');
     options.modifierKey = $('#modifier-key option:selected').val();
     options.hotKeyCode = parseInt($('#keycode option:selected').val(), 10);
 
@@ -2443,6 +2451,10 @@ function showDialog() {
                 '<input type="checkbox" id="always-show-emotions">',
                 '<label for="always-show-emotions">总是显示表情菜单</label>',
             '</div>',
+            '<div>',
+                '<input type="checkbox" id="replace-native-quote-button">',
+                '<label for="replace-native-quote-button">替换掉原本的引用按钮</label>',
+            '</div>',
             '</fieldset>',
             '<fieldset>',
             '<legend></legend>',
@@ -2606,27 +2618,11 @@ function showNotifyUser(storey) {
 
 // 添加回复内容（这里的storey是1-9再到0,，不是从0开始的）
 function addFastQuote(url, index) {
-/*
-    // 暂时先转换为 storey，有空再用 getPostList 改掉
-
-
-    var replyNum = storey + 48;
-    if (!document.getElementById('reply'+replyNum)) {
-        return;
-    }
-*/
     var storey = (index == 9) ? 0 : (index + 1);
 
     showDialog();
     showNotifyUser(storey);
-/*
-    var replyurl = document.getElementById('reply'+replyNum).value;
-    $.ajax({
-        'url': replyurl,
-        'success': function(html) {
-        }
-    });
-*/
+
     var list = libcc98.getPostList();
     var replyurl = list[index].quote_btn.href;
     $.get(replyurl, function(html) {
@@ -2652,7 +2648,6 @@ function addMultiQuote(url, index) {
         var isXinlin = (_lib.parseQS(location.search)['boardid'] === '182');
         var quoteContent = '[quote][b]以下是引用[i]' + (isXinlin ? "匿名" : posts[index].author) + '在' + posts[index].time +
             '[/i]的发言：[/b]\n' + posts[index].content + '\n[/quote]\n';
-        console.log(quoteContent);
 
         if (!options.disableInXinlin || _lib.parseQS(location.href)['boardid'] !== '182') {
             quoteContent = addQuoteURL(url, storey, quoteContent);
@@ -2688,13 +2683,15 @@ function addButtons() {
     });
 
     // 原生引用按钮
-    $('.quote_btn').each(function (index) {
-        $(this).click(function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            addFastQuote(location.href, index);
+    if (options.replaceNativeQuoteButton) {
+        $('.quote_btn').each(function (index) {
+            $(this).click(function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                addFastQuote(location.href, index);
+            });
         });
-    });
+    }
 
     $('.fastquote_btn').each(function (index) {
         $(this).click(function() { addFastQuote(location.href, index); });
