@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.8.3
+// @version        0.8.4
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description
@@ -1328,7 +1328,7 @@ var _cc98 = (function() {
         var urlObj = _lib.parseURL(url);
 
         // 不在www.cc98.org域名下
-        if (urlObj['host'] !== location.host) {
+        if (urlObj['host'] !== 'www.cc98.org' && urlObj['host'] !== 'hz.cc98.lifetoy.org') {
             return url;
         }
 
