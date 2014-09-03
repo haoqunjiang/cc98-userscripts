@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.8.2
+// @version        0.8.3
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description
@@ -551,7 +551,7 @@ define('libcc98', function(exports, module) {
                 // 以下可能没有（楼主可见/指定用户可见/回复可见）
                 post.expression = table.find('.usernamedisp').next().attr('src'); // 小表情
                 post.title = table.find('.usernamedisp').next().next().text(); // 标题
-                post.content = table.find('.usernamedisp').next().next().next().next().html().replace(/\<br\>/ig, '\n'); // 回复内容
+                post.content = table.find('.usernamedisp').parent().find('span[id^=ubbcode]').html().replace(/\<br\>/ig, '\n'); // 回复内容
 
                 return post;
             }).toArray();
@@ -572,11 +572,11 @@ define('libcc98', function(exports, module) {
                 post.storey = post.quote_btn.parentNode.textContent.trim(); // 每层楼边上服务器给出的楼层文字
 
                 // 以下可能没有（楼主可见/指定用户可见/回复可见）
-                var user_post = table.find('blockquote script').parent().eq(0);
+                var user_post = table.find('article.content-article > table > tbody > tr > td');
 
                 post.expression = user_post.find('img[title="发贴心情"]').attr('src'); // 小表情
                 post.title = user_post.children().eq(1).text(); // 标题
-                post.content = user_post.children().eq(3).html().replace(/\<br\>/ig, '\n'); // 回复内容
+                post.content = user_post.find('span[id^=ubbcode]').html().replace(/\<br\>/ig, '\n'); // 回复内容
 
 
                 return post;
