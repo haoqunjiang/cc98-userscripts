@@ -224,13 +224,14 @@
         var proxy = function() {
             callback.aplly(this, arguments);
         };
-        var prefix = '_CHAOS_JSONP_'
+        var prefix = '_CHAOS_JSONP_';
         var name = prefix + chaos.guid().replace(/-/g, '_'); // generate a unique valid function name
         global = unsafeWindow || window; // for compatibility with GM scripts
         global[name] = proxy;
 
         var script = document.createElement('script');
-        var url = url.replace('{callback}', name);
+
+        url = url.replace('{callback}', name);
 
         script.src = url;
         script.onload = function() {
@@ -240,20 +241,6 @@
         document.body.appendChild(script);
     },
 
-    // xpath query
-    //@return {Array}   返回由符合条件的DOMElement组成的数组
-    xpath: function(expr, contextNode) {
-        contextNode = contextNode || document;
-        var xresult = document.evaluate(expr, contextNode, null,
-            XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
-        var xnodes = [];
-        var xres;
-        while (xres = xresult.iterateNext()) {
-            xnodes.push(xres);
-        }
-
-        return xnodes;
-    },
 
     // 添加CSS
     addStyles: function(css) {
@@ -551,7 +538,7 @@ define('libcc98', function(exports, module) {
                 // 以下可能没有（楼主可见/指定用户可见/回复可见）
                 post.expression = table.find('.usernamedisp').next().attr('src'); // 小表情
                 post.title = table.find('.usernamedisp').next().next().text(); // 标题
-                post.content = table.find('.usernamedisp').parent().find('span[id^=ubbcode]').html().replace(/\<br\>/ig, '\n'); // 回复内容
+                post.content = (table.find('.usernamedisp').parent().find('span[id^=ubbcode]').html() || '').replace(/<br\>/ig, '\n'); // 回复内容
 
                 return post;
             }).toArray();
@@ -576,7 +563,7 @@ define('libcc98', function(exports, module) {
 
                 post.expression = user_post.find('img[title="发贴心情"]').attr('src'); // 小表情
                 post.title = user_post.children().eq(1).text(); // 标题
-                post.content = user_post.find('span[id^=ubbcode]').html().replace(/\<br\>/ig, '\n'); // 回复内容
+                post.content = (user_post.find('span[id^=ubbcode]').html() || '').replace(/<br\>/ig, '\n'); // 回复内容
 
 
                 return post;
@@ -957,7 +944,7 @@ if (!XMLHttpRequest.prototype.sendAsBinary) {
 
 
 // 辅助函数
-// parseQS, toQS, parseURL, parseCookies, unescapeHTML, ajax, xpath, addStyles
+// parseQS, toQS, parseURL, parseCookies, unescapeHTML, ajax, addStyles
 var _lib = {
 
     // parse the url get parameters
@@ -1065,20 +1052,6 @@ var _lib = {
         }
     },
 
-    // xpath query
-    //@return {Array}   返回由符合条件的DOMElement组成的数组
-    xpath: function(expr, contextNode) {
-        contextNode = contextNode || document;
-        var xresult = document.evaluate(expr, contextNode, null,
-                    XPathResult.ORDERED_NODE_ITERATOR_TYPE , null);
-        var xnodes = [];
-        var xres;
-        while (xres = xresult.iterateNext()) {
-            xnodes.push(xres);
-        }
-
-        return xnodes;
-    },
     // 添加CSS
     addStyles: function(css) {
         var head = document.getElementsByTagName('head')[0];
