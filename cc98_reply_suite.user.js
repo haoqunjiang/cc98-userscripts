@@ -2688,7 +2688,7 @@ function addButtons() {
                 $('#scroll_to_top').fadeTo(200, 0).css('visibility', 'hidden');
             }
         });
-        //$(window).scroll();
+        $(window).trigger('scroll');
     }
 }
 
