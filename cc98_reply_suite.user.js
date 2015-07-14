@@ -563,7 +563,7 @@ define('libcc98', function(exports, module) {
 
                 post.expression = user_post.find('img[title="发贴心情"]').attr('src'); // 小表情
                 post.title = user_post.children().eq(1).text(); // 标题
-                post.content = (user_post.find('span[id^=ubbcode]').html() || '').replace(/<br\>/ig, '\n'); // 回复内容
+                post.content = (user_post.find('[id^=ubbcode]').html() || '').replace(/<br\>/ig, '\n'); // 回复内容
 
 
                 return post;

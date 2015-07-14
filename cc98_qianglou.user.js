@@ -53,6 +53,7 @@ $(function() {
         if (all === "")             // If the property is the empty string
             return cookies;         // return an empty object
         var list = all.split("; "); // Split into individual name=value pairs
+        console.log(list);
         for(var i = 0; i < list.length; i++) {  // For each cookie
             var cookie = list[i];
             var p = cookie.indexOf("=");        // Find the first = sign
@@ -61,6 +62,7 @@ $(function() {
             value = decodeURIComponent(value);  // Decode the value
             cookies[name] = value;              // Store name and value in object
         }
+        console.log(cookies);
         return cookies;
     }
 
@@ -69,15 +71,15 @@ $(function() {
         var params = qs(url);
         var postAddr = "http://www.cc98.org/SaveReAnnounce.asp?method=fastreply&BoardID=" + params["boardid"];
         var cookies = getCookies()["aspsky"];
-        var aspsky = qs(cookies)
+        var aspsky = qs(cookies);
         var reply = {
             "Content": content,
             "Expression": expression,
             "Subject": subject || "",
             "followup": params["id"],
             "RootID": params["id"],
-            "UserName": aspsky["username"],
-            "passwd": aspsky["password"],
+            //"UserName": aspsky["username"],
+            //"passwd": aspsky["password"],
             "signflag": "yes",
             "star": params["star"] ||   1
         };
@@ -199,7 +201,7 @@ $(function() {
         var content = getItem("qianglou-content");
         var expression = getItem("qianglou-expression");
         var subject = getItem("qianglou-subject");
-        console.log('here')
+        //console.log('here')
         post (url, content, expression, subject, clear);
     }
 

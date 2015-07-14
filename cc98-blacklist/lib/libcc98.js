@@ -92,7 +92,7 @@ define('libcc98', function(exports, module) {
                 // 以下可能没有（楼主可见/指定用户可见/回复可见）
                 post.expression = table.find('.usernamedisp').next().attr('src'); // 小表情
                 post.title = table.find('.usernamedisp').next().next().text(); // 标题
-                post.content = table.find('.usernamedisp').next().next().next().next().text(); // 回复内容
+                post.content = table.find('.usernamedisp').next().next().next().next().html().replace(/\<br\>/ig, '\n'); // 回复内容
 
                 return post;
             }).toArray();
@@ -117,7 +117,7 @@ define('libcc98', function(exports, module) {
 
                 post.expression = user_post.find('img[title="发贴心情"]').attr('src'); // 小表情
                 post.title = user_post.children().eq(1).text(); // 标题
-                post.content = user_post.children().eq(3).text(); // 回复内容
+                post.content = user_post.children().eq(3)..html().replace(/\<br\>/ig, '\n'); // 回复内容
 
                 return post;
             }).toArray();
