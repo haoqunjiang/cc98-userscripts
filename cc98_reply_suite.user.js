@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.8.6
+// @version        0.8.7
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description
@@ -539,6 +539,7 @@ define('libcc98', function(exports, module) {
                 post.expression = table.find('.usernamedisp').next().attr('src'); // 小表情
                 post.title = table.find('.usernamedisp').next().next().text(); // 标题
                 post.content = (table.find('.usernamedisp').parent().find('span[id^=ubbcode]').html() || '').replace(/<br\>/ig, '\n'); // 回复内容
+
 
                 return post;
             }).toArray();
@@ -2617,10 +2618,15 @@ function addMultiQuote(url, index) {
 
     url = _cc98.formatURL(url, true);
 
+    var htmlDecode = function(input) {
+        var doc = new DOMParser().parseFromString(input, "text/html");
+        return doc.documentElement.textContent;
+    }
+
     libcc98.getPostList(location.origin + url).then(function(posts) {
         var isXinlin = (_lib.parseQS(location.search)['boardid'] === '182');
         var quoteContent = '[quote][b]以下是引用[i]' + (isXinlin ? "匿名" : posts[index].author) + '在' + posts[index].time +
-            '[/i]的发言：[/b]\n' + posts[index].content + '\n[/quote]\n';
+            '[/i]的发言：[/b]\n' + htmlDecode(posts[index].content) + '\n[/quote]\n';
 
         if (!options.disableInXinlin || _lib.parseQS(location.href)['boardid'] !== '182') {
             quoteContent = addQuoteURL(url, storey, quoteContent);
