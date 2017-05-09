@@ -2612,8 +2612,7 @@ function addFastQuote(url, index) {
     var list = libcc98.getPostList();
     var replyurl = list[index].quote_btn.href;
     $.get(replyurl, function(html) {
-        var quoteContent = _lib.unescapeHTML((/<textarea.*>([\s\S]*)<\/textarea>/ig).exec(html)[1]);
-
+        var quoteContent = _lib.unescapeHTML((/id="EditArea" data-content="([\s\S]*?)">/ig).exec(html)[1]);
         if (!options.disableInXinlin || _lib.parseQS(location.search)['boardid'] !== '182') {
             quoteContent = addQuoteURL(url, storey, quoteContent);
         }
