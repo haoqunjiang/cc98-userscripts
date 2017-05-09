@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             cc98_reply_suite
 // @name           cc98 reply suite
-// @version        0.8.7
+// @version        0.8.8
 // @namespace      soda@cc98.org
 // @author         soda <sodazju@gmail.com>
 // @description
@@ -1134,6 +1134,7 @@ var _cc98 = (function() {
     // @param {boolean} [opts.viewerfilter] 使用指定用户可见
     // @param {string}  [opts.allowedviewers] 可见用户
     // @param {function(responseText)} [opts.callback=function(){}] 回调函数
+    // @param {string}  [opts.AFToken] CSRF的token
     that.reply = function(opts) {
         var params = _lib.parseQS(opts["url"]);
         var postURL = REPLY_URL + "&boardid=" + params["boardid"];
@@ -1160,6 +1161,7 @@ var _cc98 = (function() {
                 //'passwd': opts['password'],
                 'signflag': 'yes',
                 'enableviewerfilter': opts['viewerfilter'] ? '1' : '',
+                'AFToken': opts['AFToken'],
             };
         if (opts['viewerfilter']) {
             data['allowedviewers'] = opts['allowedviewers'] || '';
@@ -1180,6 +1182,8 @@ var _cc98 = (function() {
     // @param {string}  opts.subject 站短标题
     // @param {string}  opts.message 站短内容
     // @param {function(responseText)} [opts.callback=function(){}] 回调函数
+    // @param {string}  [opts.AFToken] CSRF的token
+
     that.sendPM = function(opts) {
         _lib.ajax({
             "type": "POST",
@@ -1187,7 +1191,8 @@ var _cc98 = (function() {
             "data": {
                 "touser": opts["recipient"],
                 "title": opts["subject"],
-                "message": opts["message"]
+                "message": opts["message"],
+                "AFToken": opts["AFToken"],
             },
             "success": opts["callback"]
         });
@@ -2081,12 +2086,17 @@ function uploadFiles() {
             return function(html) {
                 var file = $('#' + file_id);
 
-                var pattern = /script>insertupload\('([^']+)'\);<\/script/ig;
-                var ubb = pattern.exec(html);
+                var pattern = /script>window.parent.insertUpload\(.*,'([^']+)',.*\);<\/script/ig;
+                var ubb = pattern.exec(html)[1];
 
                 if (ubb) {
                     // 要插入的ubb代码
-                    ubb = ubb[1] + '\n';
+                    ubb = "[upload=FILETYPE,1]" + ubb + "[/upload]\n"
+
+                    // 根据拓展名修改ubb标签
+                    pattern = /uploadfile[\/0-9]+\.(.*?)\[/ig;
+                    var extend = pattern.exec(ubb)[1];
+                    ubb = ubb.replace("FILETYPE", extend)
 
                     // 自动显示图片
                     if (image_autoshow) {
@@ -2194,6 +2204,7 @@ function atUsers() {
             'recipient': username,
             'subject': '@提示',
             'message': message,
+            'AFToken': $('input[name="AFToken"]').val(),
             'callback': function(username) {
                 return function(html) {
                     if (html.indexOf('论坛成功信息') !== -1) {
@@ -2234,6 +2245,7 @@ function reply() {
         "subject": $('#post_subject').val(),
         "replyid": $('#the_reply_id').val(),
         "sendsms": $('#notfiy_user_checkbox').prop('checked'),
+        "AFToken": $('input[name="AFToken"]').val(),
         "callback": function(html) {
             if (html.indexOf('状态：回复帖子成功') !== -1) {
                 // 回复成功，下一步是处理@信息并刷新页面
